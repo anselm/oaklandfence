@@ -5,6 +5,7 @@
 #import <Vuforia/TrackerManager.h>
 #import <Vuforia/ObjectTracker.h>
 #import <Vuforia/Trackable.h>
+#import <Vuforia/ImageTarget.h>
 #import <Vuforia/DataSet.h>
 #import <Vuforia/CameraDevice.h>
 
@@ -74,26 +75,17 @@
     // initialize AR
     [vapp initAR:Vuforia::GL_20 orientation:[[UIApplication sharedApplication] statusBarOrientation]];
 
-    
-    
-    
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
     tap.delegate = (id<UIGestureRecognizerDelegate>)self;
     [self.view addGestureRecognizer:tap];
     //    [tap requireGestureRecognizerToFail:doubleTap];
     
-
     // show loading animation while AR is being initialized
     [self showLoadingAnimation];
 }
 
-// tap handler
 - (void)handleTap:(UITapGestureRecognizer *)sender {
-    
-    //return;
-    
     if (sender.state == UIGestureRecognizerStateEnded) {
-        // handling code
         //CGPoint touchPoint = [sender locationInView:eaglView];
         [eaglView handleTouchPoint];
     }
@@ -212,12 +204,8 @@
     return true;
 }
 
-
 //
 // Update local cache from remote server
-// Code could be cleaner - attempting to fetch both files before writing either file to reduce chance of half state
-// Used to check date stamp but now the version name/key passed is used
-// TODO could fetch a single file or blob
 //
 - (bool) preloadData:(NSString *)name local:(NSString *)localname {
     
@@ -232,10 +220,17 @@
     NSDictionary* attrs1 = [fm attributesOfItemAtPath:filePath1 error:nil];
     NSDictionary* attrs2 = [fm attributesOfItemAtPath:filePath1 error:nil];
     
-    if(attrs1 != nil)[fm removeItemAtPath:filePath1 error:nil];
-    if(attrs2 != nil)[fm removeItemAtPath:filePath2 error:nil];
+    //////////////////////////////////////////////////////
+    // if we have the same local file then we should not fetch again
+    
+    if(attrs1 != nil && attrs2 != nil ) {
+        NSLog(@"File already in cache: %@", filePath1 );
+        NSLog(@"File already in cache: %@", filePath2 );
+        return YES;
+    }
 
-    /////////////////////////////////////////////////////
+    // if(attrs1 != nil)[fm removeItemAtPath:filePath1 error:nil];
+    // if(attrs2 != nil)[fm removeItemAtPath:filePath2 error:nil];
 
     //NSDate* date2 = nil;
     //if (attrs2 != nil) {
@@ -279,19 +274,19 @@
     // Effectively fetch a string that directs which tracker files to load - useful for dynamically revising client tracking targets
     NSData* blob = [NSData dataWithContentsOfURL:[NSURL URLWithString:@"http://makerlab.com/oaklandfence/version.txt"]];
     if (!blob) {
-        // TODO probably need to handle this error case better
         return NO;
     }
     
+    // may download fresh tracker to a local file
     NSString *localname = @"local";
     NSString *remotename = [[NSString alloc] initWithData:blob encoding:NSUTF8StringEncoding];
     remotename = [remotename stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     
-    // here for now
     if(![self preloadData:remotename local:localname]) {
         return NO;
     }
 
+    // locally load the tracker data into vuforia
     Vuforia::DataSet* data = [self loadObjectTrackerDataSet:localname];
     if (data == NULL) {
         NSLog(@"Failed to load datasets");
@@ -302,12 +297,13 @@
         return NO;
     }
 
+    // if all is well start a side process to load associated jpegs for our app
+    [eaglView cacheImages:@"local" dataSet:data];
+    
     NSLog(@"INFO: successfully activated data set");
     return YES;
 }
 
-
-// start the application trackers
 - (bool) doStartTrackers {
     Vuforia::TrackerManager& trackerManager = Vuforia::TrackerManager::getInstance();
     Vuforia::Tracker* tracker = trackerManager.getTracker(Vuforia::ObjectTracker::getClassType());
@@ -318,22 +314,16 @@
     return true;
 }
 
-// callback called when the initailization of the AR is done
 - (void) onInitARDone:(NSError *)initError {
     UIActivityIndicatorView *loadingIndicator = (UIActivityIndicatorView *)[eaglView viewWithTag:1];
     [loadingIndicator removeFromSuperview];
-    
     if (initError == nil) {
         NSError * error = nil;
         [vapp startAR:Vuforia::CameraDevice::CAMERA_DIRECTION_BACK error:&error];
-        
-        // by default, we try to set the continuous auto focus mode
         Vuforia::CameraDevice::getInstance().setFocusMode(Vuforia::CameraDevice::FOCUS_MODE_CONTINUOUSAUTO);
-        
     } else {
         NSLog(@"Error initializing AR:%@", [initError description]);
         dispatch_async( dispatch_get_main_queue(), ^{
-            
             UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Error"
                                                             message:[initError localizedDescription]
                                                            delegate:self
@@ -346,8 +336,7 @@
 
 #pragma mark - UIAlertViewDelegate
 
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
-{
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"kDismissARViewController" object:nil];
 }
 
@@ -384,10 +373,10 @@
     NSString  *documentsDirectory = [paths objectAtIndex:0];
     NSString  *dataFilePath = [NSString stringWithFormat:@"%@/%@.xml", documentsDirectory,dataFileName];
     
-    dataFilePath = @"StonesAndChips.xml";
-    if (!dataSet->load([dataFilePath cStringUsingEncoding:NSASCIIStringEncoding], Vuforia::STORAGE_APPRESOURCE))
+    //dataFilePath = @"StonesAndChips.xml";
+    //if (!dataSet->load([dataFilePath cStringUsingEncoding:NSASCIIStringEncoding], Vuforia::STORAGE_APPRESOURCE))
 
-    //if (!dataSet->load([dataFilePath cStringUsingEncoding:NSASCIIStringEncoding], Vuforia::STORAGE_ABSOLUTE))
+    if (!dataSet->load([dataFilePath cStringUsingEncoding:NSASCIIStringEncoding], Vuforia::STORAGE_ABSOLUTE))
     {
         NSLog(@"ERROR: failed to load data set %@",dataFilePath);
         objectTracker->destroyDataSet(dataSet);

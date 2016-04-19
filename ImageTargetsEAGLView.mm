@@ -20,12 +20,15 @@ countries.
 #import <Vuforia/ImageTarget.h>
 #import <Vuforia/VideoBackgroundConfig.h>
 
+
+#import <Vuforia/DataSet.h>
+
+
 #import "ImageTargetsEAGLView.h"
 #import "Texture.h"
 #import "SampleApplicationUtils.h"
 #import "SampleApplicationShaderUtils.h"
 #import "Quad.h"
-#import "Teapot.h"
 
 #import "videoPlayerHelper.h"
 
@@ -47,18 +50,8 @@ countries.
 //
 //******************************************************************************
 
-#define kNumAugmentationTextures 1
-
 namespace {
-    // --- Data private to this unit ---
 
-    // Teapot texture filenames
-    const char* textureFilenames[] = {
-        "fantastic1.png",
-    };
-    // Texture used when rendering augmentation
-    Texture* augmentationTexture[kNumAugmentationTextures];
-    
     // Model scale factor
     float targetWidth = 0.0f;
     float targetHeight = 0.0f;
@@ -73,7 +66,6 @@ namespace {
         1.0, 0.0,
         0.0, 0.0,
     };
-    
 
     VideoPlayerHelper* videoPlayerHelper;
     float videoPlaybackTime;
@@ -87,6 +79,20 @@ namespace {
     float playSlerp;    // animation slerp timer
     const char* playName; // name of image found
     GLKMatrix4 pose;
+    Texture* defaultTextureHandle = 0;
+    Texture* textureHandle = 0;
+    GLuint defaultTextureID = 0;
+    GLuint textureID = 0;
+    GLKMatrix4 glmvp44;
+    
+    // scale up source vertices to avoid adjusting the kObjectScaleNormal too much because that creates jitter - I guessed that 128 was exact.
+    static const float quadVertices2[kNumQuadVertices * 3] = {
+        -128.00f,  -128.00f,  0.0f,
+        128.00f,  -128.00f,  0.0f,
+        128.00f,   128.00f,  0.0f,
+        -128.00f,   128.00f,  0.0f,
+    };
+    
 
 }
 
@@ -123,19 +129,10 @@ namespace {
     
     if (self) {
         vapp = app;
+
         // Enable retina mode if available on this device
         if (YES == [vapp isRetinaDisplay]) {
             [self setContentScaleFactor:[UIScreen mainScreen].nativeScale];
-        }
-        
-        // Load the augmentation textures
-        for (int i = 0; i < kNumAugmentationTextures; ++i) {
-            augmentationTexture[i] = [[Texture alloc] initWithImageFile:[NSString stringWithCString:textureFilenames[i] encoding:NSASCIIStringEncoding]];
-            
-            int w = [augmentationTexture[i] width];
-            int h = [augmentationTexture[0] height];
-            NSLog(@"texture is %s %d %d",textureFilenames[i], w,h);
-
         }
 
         // Create the OpenGL ES context
@@ -146,22 +143,23 @@ namespace {
         if (context != [EAGLContext currentContext]) {
             [EAGLContext setCurrentContext:context];
         }
-        
-        // Generate the OpenGL ES texture and upload the texture data for use when rendering the augmentation
-        for (int i = 0; i < kNumAugmentationTextures; ++i) {
-            GLuint textureID;
-            glGenTextures(1, &textureID);
-            [augmentationTexture[i] setTextureID:textureID];
-            glBindTexture(GL_TEXTURE_2D, textureID);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, [augmentationTexture[i] width], [augmentationTexture[i] height], 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)[augmentationTexture[i] pngData]);
-        }
 
         [self initShaders];
-        
+    
+        // start video player
         videoPlayerHelper = [[VideoPlayerHelper alloc] initMe];
         videoPlaybackTime = VIDEO_PLAYBACK_CURRENT_POSITION;
+
+        // manually load a fall back image to use in some cases if no network provided image
+        defaultTextureHandle = [[Texture alloc] initWithImageFile:[NSString stringWithCString:"default.png" encoding:NSASCIIStringEncoding]];
+        if(defaultTextureHandle != NULL && [defaultTextureHandle isLoaded]) {
+            glGenTextures(1, &defaultTextureID);
+            [defaultTextureHandle setTextureID:defaultTextureID];
+            glBindTexture(GL_TEXTURE_2D, defaultTextureID);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, [defaultTextureHandle width], [defaultTextureHandle height], 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)[defaultTextureHandle pngData]);
+        }
     }
     
     return self;
@@ -170,14 +168,15 @@ namespace {
 
 - (void)dealloc {
     [self deleteFramebuffer];
-    
-    // Tear down context
+
     if ([EAGLContext currentContext] == context) {
         [EAGLContext setCurrentContext:nil];
     }
 
-    for (int i = 0; i < kNumAugmentationTextures; ++i) {
-        augmentationTexture[i] = nil;
+    defaultTextureHandle = textureHandle = 0;
+
+    for (int i = 0; i < kMaxAugmentationTextures; ++i) {
+        textures[i] = nil;
     }
 
     [videoPlayerHelper unload];
@@ -295,13 +294,6 @@ namespace {
     [videoPlayerHelper pause];
 }
 
-- (void) beginLoadingVideo {
-    NSString* myfile = @"http://makerlab.com/oaklandfence/fantastic1.mp4";
-    //NSString* myfile = @"http://makerlab.com/oaklandfence/big_buck_bunny_240p_50mb.mp4";
-    [videoPlayerHelper load:myfile playImmediately:YES fromPosition:0];
-    NSLog(@"beginning to load video");
-}
-
 GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     return { a.v[0] * (1-slerp) + b.v[0] * slerp, a.v[1] * (1-slerp) + b.v[1] * slerp, a.v[2] * (1-slerp) + b.v[2] * slerp };
 }
@@ -333,7 +325,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             
             glViewport(vapp.viewport.posX, vapp.viewport.posY, vapp.viewport.sizeX, vapp.viewport.sizeY);
             
-            [self renderTrackablesOld:state];
+            [self renderTrackablesNew:state];
         
             glDisable(GL_DEPTH_TEST);
             glDisable(GL_CULL_FACE);
@@ -346,151 +338,17 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
 
 }
 
-#define USETEAPOT FALSE
-#define USEGLK TRUE
-
-- (void) renderTrackablesOld:(Vuforia::State)state {
-
-    if(state.getNumTrackableResults() < 1) return;
-
-    // Get the trackable
-    const Vuforia::TrackableResult* trackableResult = state.getTrackableResult(0);
-    const Vuforia::ImageTarget& imageTarget = (const Vuforia::ImageTarget&) trackableResult->getTrackable();
-    
-    // Get size and aspect ratio
-    Vuforia::Vec3F size = imageTarget.getSize();
-    targetWidth = size.data[0];
-    targetHeight = size.data[1];
-    targetAspect = targetHeight/targetWidth;
-
-    // Get full pose matrix
-    Vuforia::Matrix44F modelViewMatrix = Vuforia::Tool::convertPose2GLMatrix(trackableResult->getPose());
-    const Vuforia::Matrix34F& trackablePose = trackableResult->getPose();
-    Vuforia::Matrix44F qm44 = Vuforia::Tool::convertPose2GLMatrix(trackablePose);
-    for(int i=0; i<16; i++) pose.m[i] = qm44.data[i];
-
-    // get translation from matrix
-    GLKVector3 glxyz1 = { pose.m[12], pose.m[13], pose.m[14] };
-    
-    // get rotation from matrix
-    GLKQuaternion glrot1 = GLKQuaternionMakeWithMatrix4(pose);
-
-    // bounce target
-    GLKQuaternion glrot2 = GLKQuaternionMakeWithAngleAndAxis(-3.14159265359,1,0,0);
-    GLKVector3 glxyz2 = { 0,0,220 }; // 200 covers screen, 300 fits with margin
-
-    // bounce
-    static int bounce = 0;
-    if(bounce == 0) {
-        playSlerp = playSlerp + 0.05f; if(playSlerp>1) { bounce = 1; playSlerp = 1; }
-    } else {
-        playSlerp = playSlerp - 0.05f; if(playSlerp<0) { bounce = 0; playSlerp = 0; }
-    }
-
-    // slerp to it
-    GLKQuaternion glrot = GLKQuaternionSlerp(glrot1,glrot2,playSlerp);
-    GLKVector3 glxyz = GLKVector3Slerp(glxyz1,glxyz2,playSlerp);
-
-    // remake
-    GLKMatrix4 gl44 = GLKMatrix4MakeWithQuaternion(glrot);
-    gl44.m[12] = glxyz.v[0];
-    gl44.m[13] = glxyz.v[1];
-    gl44.m[14] = glxyz.v[2];
-
-    GLKMatrix4 glmvp44;
-    Vuforia::Matrix44F modelViewProjection;
-    //float kObjectScaleNormal = 1.0f;
-
-    if(USEGLK) {
-        //SampleApplicationUtils::translatePoseMatrix(0.0f, 0.0f, kObjectScaleNormal, &gl44.m[0]);
-        //SampleApplicationUtils::scalePoseMatrix(kObjectScaleNormal, kObjectScaleNormal, kObjectScaleNormal, &gl44.m[0]);
-        SampleApplicationUtils::scalePoseMatrix(1.0f,targetAspect,1.0f,&gl44.m[0]);
-        SampleApplicationUtils::multiplyMatrix(&vapp.projectionMatrix.data[0], &gl44.m[0], &glmvp44.m[0]);
-
-    } else {
-        //SampleApplicationUtils::translatePoseMatrix(0.0f, 0.0f, kObjectScaleNormal, &modelViewMatrix.data[0]);
-        //SampleApplicationUtils::scalePoseMatrix(kObjectScaleNormal, kObjectScaleNormal, kObjectScaleNormal, &modelViewMatrix.data[0]);
-        SampleApplicationUtils::scalePoseMatrix(1.0f, targetAspect, 1.0f, &modelViewMatrix.data[0]);
-        SampleApplicationUtils::multiplyMatrix(&vapp.projectionMatrix.data[0], &modelViewMatrix.data[0], &modelViewProjection.data[0]);
-    }
-
-    // scale up source vertices to avoid adjusting the kObjectScaleNormal too much because that creates jitter - I guessed that 128 was exact.
-    static const float quadVertices2[kNumQuadVertices * 3] = {
-        -128.00f,  -128.00f,  0.0f,
-         128.00f,  -128.00f,  0.0f,
-         128.00f,   128.00f,  0.0f,
-        -128.00f,   128.00f,  0.0f,
-    };
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    glUseProgram(shaderProgramID);
-    
-    if(USETEAPOT) {
-        glVertexAttribPointer(vertexHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)teapotVertices);
-        glVertexAttribPointer(normalHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)teapotNormals);
-        glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)teapotTexCoords);
-    } else {
-        glVertexAttribPointer(vertexHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadVertices2);
-        glVertexAttribPointer(normalHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadNormals);
-        glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadTexCoords);
-    }
-    
-    glEnableVertexAttribArray(vertexHandle);
-    glEnableVertexAttribArray(normalHandle);
-    glEnableVertexAttribArray(textureCoordHandle);
-    
-    // Choose the texture based on the target name
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, augmentationTexture[0].textureID);
-
-    if(USEGLK) {
-        glUniformMatrix4fv(mvpMatrixHandle, 1, GL_FALSE, (GLfloat*)&glmvp44.m[0]);
-    } else {
-        glUniformMatrix4fv(mvpMatrixHandle, 1, GL_FALSE, (const GLfloat*)&modelViewProjection.data[0]);
-    }
-    glUniform1i(texSampler2DHandle, 0 /*GL_TEXTURE0*/);
-    
-    if(USETEAPOT) {
-        glDrawElements(GL_TRIANGLES, NUM_TEAPOT_OBJECT_INDEX, GL_UNSIGNED_SHORT, (const GLvoid*)teapotIndices);
-    } else {
-        glDrawElements(GL_TRIANGLES, kNumQuadIndices, GL_UNSIGNED_SHORT, (const GLvoid*)quadIndices);
-    }
-    
-    glDisableVertexAttribArray(vertexHandle);
-    glDisableVertexAttribArray(normalHandle);
-    glDisableVertexAttribArray(textureCoordHandle);
-    
-    SampleApplicationUtils::checkGlError("EAGLView renderFrameVuforia");
-
-}
-
 - (void) renderTrackablesNew:(Vuforia::State)state {
-    
-    [dataLock lock];
-    
+ 
+    //[dataLock lock];
+ 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // anselm state engine
+    // state engine
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
+ 
     MEDIA_STATE currentStatus = [videoPlayerHelper getStatus];
     int numActiveTrackables = state.getNumTrackableResults();
-    
-    if(numActiveTrackables>0) {
-        // use this as an opportunity to stash the pose
-        const Vuforia::TrackableResult* trackableResult = state.getTrackableResult(0);
-        //const Vuforia::ImageTarget& imageTarget = (const Vuforia::ImageTarget&) trackableResult->getTrackable();
-        //Vuforia::Vec3F size = imageTarget.getSize();
-        targetWidth = 160; //size.data[0] / 2.0f;
-        targetHeight = 100; //size.data[1] / 2.0f;
-        targetAspect = targetWidth/targetHeight;
 
-        const Vuforia::Matrix34F& trackablePose = trackableResult->getPose();
-        Vuforia::Matrix44F qm44 = Vuforia::Tool::convertPose2GLMatrix(trackablePose);
-        for(int i=0; i<16; i++) pose.m[i] = qm44.data[i];
-    }
-    
     switch(playState) {
         case 0:
             // looking for a target
@@ -505,7 +363,9 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                         playCount = 0;
                         playState = 1;
                         playSlerp = 0;
-                        [self beginLoadingVideo];
+                        playName = imageTarget.getName();
+                        NSString* url = [NSString stringWithFormat:@"http://makerlab.com/oaklandfence/%s.mp4",playName];
+                        [videoPlayerHelper load:url playImmediately:YES fromPosition:0];
                         NSLog(@"going to play state 1");
                     }
                 } else {
@@ -513,27 +373,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                     playCount = 0;
                     playCode = imageTarget.getId();
                     playName = imageTarget.getName();
-
-                    {
-/*
-                        NSString  *url = [NSString stringWithFormat:@"%@/%s.png",@"http://makerlab.com/oaklandfence/",playName];
-
-                        augmentationTexture[0] = [[Texture alloc] initWithImageFile3:url local:@"image.png"];
-                        
-                        // TODO throw away current texture
-                        
-                        GLuint textureID;
-                        glGenTextures(1, &textureID);
-                        [augmentationTexture[0] setTextureID:textureID];
-                        glBindTexture(GL_TEXTURE_2D, textureID);
-                        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, [augmentationTexture[0] width], [augmentationTexture[0] height], 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)[augmentationTexture[0] pngData]);
-                        
-                        //     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                        //     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  */
-                    }
+                    textureHandle = [self renderGetTexture:playName];
                 }
             }
             break;
@@ -564,61 +404,81 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             break;
     }
     
+    //[dataLock unlock];
+
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // end anselm state engine
+    // end state engine
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GLuint texture = 0;
+    // if the system doesn't have an idea of what it is going to render with then we have to abort...
+    if(!textureHandle) return;
 
-    // If playing then preferentially use texture from video (note this doesn't change between frames but we pretend it does)
+    // by default use a static image prior to the video arriving
+    textureID = textureHandle.textureID;
+    texCoords = quadTexCoords;
 
-    if(currentStatus == PLAYING) {
-        texture = [videoPlayerHelper updateVideoData];
-        if(texture) {
-            previousTexture = texture;
-        } else {
-            texture = previousTexture;
+    // override default by use of video texture if any has arrived yet
+    switch(currentStatus) {
+        case PLAYING: {
+            GLuint t = [videoPlayerHelper updateVideoData];
+            if(t) previousTexture = t;
+            if(!t) t = previousTexture;
+            if(t && playState == 2) {
+                textureID = t;
+                texCoords = videoQuadTextureCoords;
+            }
+            playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
+            // arguably use video dimensions but this has very little effect give current hard coded display sizes
+            //targetWidth = (float)[videoPlayerHelper getVideoHeight];
+            //targetHeight = (float)[videoPlayerHelper getVideoWidth];
+            //targetAspect = (float)[videoPlayerHelper getVideoHeight] / (float)[videoPlayerHelper getVideoWidth];
+            break;
         }
-        playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
-        texCoords = videoQuadTextureCoords;
-        // xxx todo TODO - it is arguable if the original target dimensions should be forgotten in favor of video dimensions
-        //targetWidth = (float)[videoPlayerHelper getVideoHeight];
-        //targetHeight = (float)[videoPlayerHelper getVideoWidth];
-        targetAspect = (float)[videoPlayerHelper getVideoHeight] / (float)[videoPlayerHelper getVideoWidth];
+        case PAUSED:
+            if(previousTexture) {
+                textureID = previousTexture;
+                texCoords = videoQuadTextureCoords;
+            }
+            break;
+        default:
+            playSlerp = playSlerp - 0.1; if(playSlerp<0) playSlerp = 0;
+            previousTexture = 0;
+            break;
     }
-
-    // If paused then use previous - if any
-
-    else if(currentStatus == PAUSED) {
-        texture = previousTexture;
-    }
-
-    // If not playing then revert
-    
-    else {
-        playSlerp = playSlerp - 0.1; if(playSlerp<0) playSlerp = 0;
-        texture = previousTexture = 0;
-    }
-
-    // If not playing or no texture found at all then show static image
-
-    if(true) { //!texture) {
-        previousTexture = 0;
-        Texture* t = augmentationTexture[0];
-        texture = [t textureID];
-        texCoords = quadTexCoords;
-        targetAspect = (float)[t height] / (float)[t width];
-    }
-
-    [dataLock unlock];
 
     // render overlay if state engine mode is post detection
-    
     if(playState < 1) return;
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // get pose and aspect from augmented reality overlay
+    [self buildPose:state];
+    [self buildTrans];
+    [self renderQuad];
+
+}
+
+- (void) buildPose:(Vuforia::State)state {
+
+    if(state.getNumTrackableResults() < 1) return;
+
+    // Get the trackable
+    const Vuforia::TrackableResult* trackableResult = state.getTrackableResult(0);
+    const Vuforia::ImageTarget& imageTarget = (const Vuforia::ImageTarget&) trackableResult->getTrackable();
     
-    // fiddle with texture coordinates based on what is being shown
+    // Get size and aspect ratio
+    Vuforia::Vec3F size = imageTarget.getSize();
+    targetWidth = size.data[0];
+    targetHeight = size.data[1];
+    targetAspect = targetHeight/targetWidth;
+    
+    // Get full pose matrix
+    const Vuforia::Matrix34F& trackablePose = trackableResult->getPose();
+    Vuforia::Matrix44F qm44 = Vuforia::Tool::convertPose2GLMatrix(trackablePose);
+    for(int i=0; i<16; i++) pose.m[i] = qm44.data[i];
+
+}
+
+
+- (void) buildTrans {
 
     // get translation from matrix
     GLKVector3 glxyz1 = { pose.m[12], pose.m[13], pose.m[14] };
@@ -626,73 +486,112 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     // get rotation from matrix
     GLKQuaternion glrot1 = GLKQuaternionMakeWithMatrix4(pose);
     
-    // this is the target rotation and translation we want to be at
+    // bounce target
     GLKQuaternion glrot2 = GLKQuaternionMakeWithAngleAndAxis(-3.14159265359,1,0,0);
-    GLKVector3 glxyz2 = { 0,0,200 };
-    
+    GLKVector3 glxyz2 = { 0,0,220 }; // 200 covers screen, 300 fits with margin
+
     // slerp to it
     GLKQuaternion glrot = GLKQuaternionSlerp(glrot1,glrot2,playSlerp);
     GLKVector3 glxyz = GLKVector3Slerp(glxyz1,glxyz2,playSlerp);
     
-    // remake matrix from rot and trans
+    // remake
     GLKMatrix4 gl44 = GLKMatrix4MakeWithQuaternion(glrot);
     gl44.m[12] = glxyz.v[0];
     gl44.m[13] = glxyz.v[1];
     gl44.m[14] = glxyz.v[2];
-    
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // paint
-    
-    GLKMatrix4 glmvp44;
-    
-    // ostensibly we want to use the boundaries of the target region that was tracked
-    // the video itself also has ideal boundaries... and arguably that could be used instead - the aspect ratio does reflect that
-    //
-    
-    // xxx do not want to use target width but rather the video width ideally - or a scale factor that is dynamic and fits to box of target
-    // ostensibly the trackable has dime
-    
-  //? SampleApplicationUtils::translatePoseMatrix(0.0f, 0.0f, kObjectScaleNormal,&gl44.m[0]);
-    SampleApplicationUtils::scalePoseMatrix(targetWidth, targetWidth * targetAspect,targetWidth,&gl44.m[0]);
-    SampleApplicationUtils::multiplyMatrix(vapp.projectionMatrix.data,&gl44.m[0],&glmvp44.m[0]);
+    SampleApplicationUtils::scalePoseMatrix(1.0f,targetAspect,1.0f,&gl44.m[0]);
+    //SampleApplicationUtils::scalePoseMatrix(targetWidth, targetWidth * targetAspect,targetWidth,&gl44.m[0]);
+    SampleApplicationUtils::multiplyMatrix(&vapp.projectionMatrix.data[0], &gl44.m[0], &glmvp44.m[0]);
 
-    //SampleApplicationUtils::translatePoseMatrix(0.0f, 0.0f, kObjectScaleNormal, &modelViewMatrix.data[0]);
-//    SampleApplicationUtils::scalePoseMatrix(kObjectScaleNormal, kObjectScaleNormal, kObjectScaleNormal, &modelViewMatrix.data[0]);
-//    SampleApplicationUtils::multiplyMatrix(&vapp.projectionMatrix.data[0], &modelViewMatrix.data[0], &modelViewProjection.data[0]);
+}
 
+- (void) renderQuad {
     
     glUseProgram(shaderProgramID);
     
-    glVertexAttribPointer(vertexHandle, 3, GL_FLOAT, GL_FALSE, 0, quadVertices);
-    glVertexAttribPointer(normalHandle, 3, GL_FLOAT, GL_FALSE, 0, quadNormals);
-    glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, texCoords);
-    
+    glVertexAttribPointer(vertexHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadVertices2);
+    glVertexAttribPointer(normalHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadNormals);
+    glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)texCoords);
+
     glEnableVertexAttribArray(vertexHandle);
     glEnableVertexAttribArray(normalHandle);
     glEnableVertexAttribArray(textureCoordHandle);
-    
+
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    
     glUniformMatrix4fv(mvpMatrixHandle, 1, GL_FALSE, (GLfloat*)&glmvp44.m[0]);
     glUniform1i(texSampler2DHandle, 0 /*GL_TEXTURE0*/);
-    glDrawElements(GL_TRIANGLES, kNumQuadIndices, GL_UNSIGNED_SHORT, quadIndices);
+    
+    glDrawElements(GL_TRIANGLES, kNumQuadIndices, GL_UNSIGNED_SHORT, (const GLvoid*)quadIndices);
     
     glDisableVertexAttribArray(vertexHandle);
     glDisableVertexAttribArray(normalHandle);
     glDisableVertexAttribArray(textureCoordHandle);
     
-    //glUseProgram(0);
-
     SampleApplicationUtils::checkGlError("EAGLView renderFrameVuforia");
-
+    
 }
 
+//
+// a side process which loads associated jpegs for this particular app
+// XXX todo make a backdrop thread
+//
+- (bool) cacheImages:(NSString *)localname dataSet:(Vuforia::DataSet*)data {
+
+    // set number of trackables
+    numTextures = data->getNumTrackables();
+    
+    // copy all of the referenced trackables name tags to a place where we can associate them with textures later...
+    for(int i = 0; i < numTextures && i < kMaxAugmentationTextures; i++ ) {
+        const char* playName = data->getTrackable(i)->getName();
+        NSString  *localstr = [NSString stringWithFormat:@"%s.png",playName];
+        textures[i] = [[Texture alloc] initTagOnly:localstr];
+    }
+
+    // on a separate thread load images to a local cache and thence to RAM
+    for(int i = 0; i < numTextures && i < kMaxAugmentationTextures; i++ ) {
+        const char* playName = data->getTrackable(i)->getName();
+        NSString  *urlstr = [NSString stringWithFormat:@"%@/%s.png",@"http://makerlab.com/oaklandfence/",playName];
+        NSString  *localstr = [NSString stringWithFormat:@"%s.png",playName];
+        textures[i] = [[Texture alloc] initWithImageFile3:urlstr local:localstr];
+    }
+
+    return YES;
+}
+
+
+- (Texture*) renderGetTexture:(const char *)name {
+
+    NSString  *localstr = [NSString stringWithFormat:@"%s.png",name];
+
+    for(int i = 0; i < numTextures; i++ ) {
+        Texture *tex = textures[i];
+        if( [tex.tag isEqualToString:localstr] ) {
+            if([tex isLoaded]) {
+                GLuint gltexture = tex.textureID;
+                if(gltexture == 0) {
+                    glGenTextures(1, &gltexture);
+                    [tex setTextureID:gltexture];
+                    glBindTexture(GL_TEXTURE_2D, gltexture);
+                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, [tex width], [tex height], 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)[tex pngData]);
+                    //     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                    //     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                }
+                if(gltexture != 0) {
+                    return tex;
+                }
+            }
+            break;
+        }
+     }
+
+    return defaultTextureHandle;
+}
+
+
+
 @end
-
-// - initial texture is not working yet? or slerping seems fucked up
-// - there is a flickr to fiddle with
-// - width and height of stand in image seems off
-// - target is too small and it seems hard to bring it close due to clipping
-
-

@@ -10,6 +10,7 @@ countries.
 #import <UIKit/UIKit.h>
 
 #import <Vuforia/UIGLViewProtocol.h>
+#import <Vuforia/DataSet.h>
 
 #import "Texture.h"
 #import "SampleApplicationSession.h"
@@ -18,8 +19,10 @@ countries.
 
 #import <GLKit/GLKit.h>
 
-// EAGLView is a subclass of UIView and conforms to the informal protocol
-// UIGLViewProtocol
+
+#define kMaxAugmentationTextures 50
+
+// EAGLView is a subclass of UIView and conforms to the informal protocol UIGLViewProtocol
 @interface ImageTargetsEAGLView : UIView <UIGLViewProtocol, SampleGLResourceHandler> {
 @private
     // OpenGL ES context
@@ -38,12 +41,14 @@ countries.
     GLint textureCoordHandle;
     GLint mvpMatrixHandle;
     GLint texSampler2DHandle;
+    
+    int numTextures;
+    Texture* textures[kMaxAugmentationTextures];
 }
 
-@property (nonatomic, weak) SampleApplicationSession * vapp;
-
+@property (nonatomic, weak) SampleApplicationSession *vapp;
 - (id)initWithFrame:(CGRect)frame appSession:(SampleApplicationSession *) app;
-
+- (bool)cacheImages:(NSString *)localname dataSet:(Vuforia::DataSet*)data;
 - (void)finishOpenGLESCommands;
 - (void)freeOpenGLESResources;
 - (void)handleTouchPoint;

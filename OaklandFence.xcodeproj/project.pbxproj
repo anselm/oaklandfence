@@ -27,9 +27,6 @@
 		43D0A33A1C9F7ED0007E1F21 /* VideoPlayerHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3221C9F7ED0007E1F21 /* VideoPlayerHelper.m */; };
 		43D0A33C1C9F7F11007E1F21 /* GLKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 43D0A33B1C9F7F11007E1F21 /* GLKit.framework */; };
 		43FB7BD61C9F85D7007D9402 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 43FB7BD51C9F85D7007D9402 /* Main.storyboard */; };
-		43FB7BDA1C9F88E7007D9402 /* fantastic1.png in Resources */ = {isa = PBXBuildFile; fileRef = 43FB7BD91C9F88E7007D9402 /* fantastic1.png */; };
-		43FB7BDC1C9FAF65007D9402 /* StonesAndChips.dat in Resources */ = {isa = PBXBuildFile; fileRef = 43FB7BDB1C9FAF65007D9402 /* StonesAndChips.dat */; };
-		43FB7BDE1C9FAF6B007D9402 /* StonesAndChips.xml in Resources */ = {isa = PBXBuildFile; fileRef = 43FB7BDD1C9FAF6B007D9402 /* StonesAndChips.xml */; };
 		D21B08711A1B6AD60041ECF3 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D21B08691A1B6AD60041ECF3 /* AVFoundation.framework */; };
 		D21B08721A1B6AD60041ECF3 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D21B086A1A1B6AD60041ECF3 /* CoreFoundation.framework */; };
 		D21B08731A1B6AD60041ECF3 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D21B086B1A1B6AD60041ECF3 /* CoreGraphics.framework */; };
@@ -80,9 +77,6 @@
 		43D0A3221C9F7ED0007E1F21 /* VideoPlayerHelper.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VideoPlayerHelper.m; sourceTree = "<group>"; };
 		43D0A33B1C9F7F11007E1F21 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
 		43FB7BD51C9F85D7007D9402 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Main.storyboard; path = en.lproj/Main.storyboard; sourceTree = "<group>"; };
-		43FB7BD91C9F88E7007D9402 /* fantastic1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = fantastic1.png; path = Resources/Assets/fantastic1.png; sourceTree = "<group>"; };
-		43FB7BDB1C9FAF65007D9402 /* StonesAndChips.dat */ = {isa = PBXFileReference; lastKnownFileType = file; name = StonesAndChips.dat; path = Resources/Assets/StonesAndChips.dat; sourceTree = "<group>"; };
-		43FB7BDD1C9FAF6B007D9402 /* StonesAndChips.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = StonesAndChips.xml; path = Resources/Assets/StonesAndChips.xml; sourceTree = "<group>"; };
 		43FB7BDF1C9FB00C007D9402 /* Teapot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Teapot.h; sourceTree = "<group>"; };
 		D21B07E61A1B4AA20041ECF3 /* OaklandFence.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OaklandFence.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D21B08691A1B6AD60041ECF3 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
@@ -169,9 +163,6 @@
 			isa = PBXGroup;
 			children = (
 				43FB7BDF1C9FB00C007D9402 /* Teapot.h */,
-				43FB7BDD1C9FAF6B007D9402 /* StonesAndChips.xml */,
-				43FB7BDB1C9FAF65007D9402 /* StonesAndChips.dat */,
-				43FB7BD91C9F88E7007D9402 /* fantastic1.png */,
 				43FB7BD51C9F85D7007D9402 /* Main.storyboard */,
 				4363D3A11C9F8518005D449E /* OaklandFence-Info.plist */,
 				43D0A33E1C9F7F66007E1F21 /* shaders */,
@@ -274,12 +265,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				43FB7BDA1C9F88E7007D9402 /* fantastic1.png in Resources */,
 				43D0A32C1C9F7ED0007E1F21 /* Line.fragsh in Resources */,
 				43FB7BD61C9F85D7007D9402 /* Main.storyboard in Resources */,
-				43FB7BDE1C9FAF6B007D9402 /* StonesAndChips.xml in Resources */,
 				43D0A3371C9F7ED0007E1F21 /* Simple.fragsh in Resources */,
-				43FB7BDC1C9FAF65007D9402 /* StonesAndChips.dat in Resources */,
 				43D0A3251C9F7ED0007E1F21 /* Images.xcassets in Resources */,
 				43D0A32E1C9F7ED0007E1F21 /* Localizable.strings in Resources */,
 				43D0A3381C9F7ED0007E1F21 /* Simple.vertsh in Resources */,

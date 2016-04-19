@@ -25,6 +25,8 @@
 {
     self = [super init];
     
+    _tag = [filename copy];
+    
     if (nil != self) {
         if (NO == [self loadImage:filename]) {
             NSLog(@"Failed to load texture image from file %@", filename);
@@ -40,7 +42,9 @@
 - (id)initWithImageFile2:(NSString*)filename
 {
     self = [super init];
-    
+
+    _tag = [filename copy];
+
     if (nil != self) {
         if (NO == [self loadImage2:filename]) {
             NSLog(@"Failed to load texture image from file %@", filename);
@@ -55,6 +59,8 @@
 {
     self = [super init];
     
+    _tag = [local copy];
+
     if (nil != self) {
         if (NO == [self loadImage3:url local:local]) {
             NSLog(@"Failed to load texture image from file %@", url);
@@ -65,11 +71,24 @@
     return self;
 }
 
+- (id)initTagOnly:(NSString*)local
+{
+    self = [super init];
+    
+    _tag = [local copy];
+    _pngData = 0;
+    
+    return self;
+}
+
+
 - (void)dealloc
 {
     if (_pngData) {
         delete[] _pngData;
     }
+    
+    _tag = 0;
 }
 
 
@@ -213,6 +232,11 @@
     }
     
     return YES;
+}
+
+- (BOOL)isLoaded {
+    if(_pngData != 0) return TRUE;
+    return FALSE;
 }
 
 @end

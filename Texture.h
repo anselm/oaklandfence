@@ -18,11 +18,13 @@
 @property (nonatomic, readonly) int channels;
 @property (nonatomic, readwrite) int textureID;
 @property (nonatomic, readonly) unsigned char* pngData;
-
+@property (nonatomic, readonly) NSString* tag;
 
 // --- Public methods ---
 - (id)initWithImageFile:(NSString*)filename;
 - (id)initWithImageFile2:(NSString*)filename;
 - (id)initWithImageFile3:(NSString*)url local:(NSString*)local;
+- (id)initTagOnly:(NSString*)tag;
+- (BOOL)isLoaded;
 
 @end
