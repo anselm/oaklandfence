@@ -44,6 +44,7 @@ countries.
     
     int numTextures;
     Texture* textures[kMaxAugmentationTextures];
+    Texture* texturesBumper[kMaxAugmentationTextures];
 }
 
 @property (nonatomic, weak) SampleApplicationSession *vapp;
@@ -51,5 +52,5 @@ countries.
 - (bool)cacheImages:(NSString *)localname dataSet:(Vuforia::DataSet*)data;
 - (void)finishOpenGLESCommands;
 - (void)freeOpenGLESResources;
-- (void)handleTouchPoint;
+- (void)handleTouchPoint:(CGPoint)point;
 @end

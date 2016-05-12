@@ -26,6 +26,7 @@
 		43D0A3391C9F7ED0007E1F21 /* Texture.mm in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3201C9F7ECF007E1F21 /* Texture.mm */; };
 		43D0A33A1C9F7ED0007E1F21 /* VideoPlayerHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3221C9F7ED0007E1F21 /* VideoPlayerHelper.m */; };
 		43D0A33C1C9F7F11007E1F21 /* GLKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 43D0A33B1C9F7F11007E1F21 /* GLKit.framework */; };
+		43F0BB7B1CD3E701004251E9 /* default.png in Resources */ = {isa = PBXBuildFile; fileRef = 43F0BB7A1CD3E701004251E9 /* default.png */; };
 		43FB7BD61C9F85D7007D9402 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 43FB7BD51C9F85D7007D9402 /* Main.storyboard */; };
 		D21B08711A1B6AD60041ECF3 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D21B08691A1B6AD60041ECF3 /* AVFoundation.framework */; };
 		D21B08721A1B6AD60041ECF3 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D21B086A1A1B6AD60041ECF3 /* CoreFoundation.framework */; };
@@ -76,8 +77,8 @@
 		43D0A3211C9F7ECF007E1F21 /* VideoPlayerHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VideoPlayerHelper.h; sourceTree = "<group>"; };
 		43D0A3221C9F7ED0007E1F21 /* VideoPlayerHelper.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VideoPlayerHelper.m; sourceTree = "<group>"; };
 		43D0A33B1C9F7F11007E1F21 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
+		43F0BB7A1CD3E701004251E9 /* default.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = default.png; path = Resources/default.png; sourceTree = "<group>"; };
 		43FB7BD51C9F85D7007D9402 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Main.storyboard; path = en.lproj/Main.storyboard; sourceTree = "<group>"; };
-		43FB7BDF1C9FB00C007D9402 /* Teapot.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Teapot.h; sourceTree = "<group>"; };
 		D21B07E61A1B4AA20041ECF3 /* OaklandFence.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OaklandFence.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D21B08691A1B6AD60041ECF3 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		D21B086A1A1B6AD60041ECF3 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
@@ -162,7 +163,7 @@
 		D21B07DD1A1B4AA10041ECF3 = {
 			isa = PBXGroup;
 			children = (
-				43FB7BDF1C9FB00C007D9402 /* Teapot.h */,
+				43F0BB7A1CD3E701004251E9 /* default.png */,
 				43FB7BD51C9F85D7007D9402 /* Main.storyboard */,
 				4363D3A11C9F8518005D449E /* OaklandFence-Info.plist */,
 				43D0A33E1C9F7F66007E1F21 /* shaders */,
@@ -239,6 +240,11 @@
 					D21B07E51A1B4AA20041ECF3 = {
 						CreatedOnToolsVersion = 6.1;
 						DevelopmentTeam = 7YGPRS26JR;
+						SystemCapabilities = {
+							com.apple.BackgroundModes = {
+								enabled = 0;
+							};
+						};
 					};
 				};
 			};
@@ -265,6 +271,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				43F0BB7B1CD3E701004251E9 /* default.png in Resources */,
 				43D0A32C1C9F7ED0007E1F21 /* Line.fragsh in Resources */,
 				43FB7BD61C9F85D7007D9402 /* Main.storyboard in Resources */,
 				43D0A3371C9F7ED0007E1F21 /* Simple.fragsh in Resources */,

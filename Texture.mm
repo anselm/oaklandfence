@@ -139,9 +139,6 @@
     NSString  *fullPath = [NSString stringWithFormat:@"%@/%@", documentsDirectory,filename];
     //NSDictionary* attrs1 = [fm attributesOfItemAtPath:filePath1 error:nil];
     
-    // Build the full path of the image file
-    //NSString* fullPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:filename];
-    
     // Create a UIImage with the contents of the file
     UIImage* uiImage = [UIImage imageWithContentsOfFile:fullPath];
     
@@ -186,9 +183,6 @@
         if(![fm createFileAtPath:fullPath contents:urlData1 attributes:nil]) return NO;
     }
     
-    // Build the full path of the image file
-    //NSString* fullPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:filename];
-    
     // Create a UIImage with the contents of the file
     UIImage* uiImage = [UIImage imageWithContentsOfFile:fullPath];
     
@@ -216,21 +210,17 @@
 }
 
 
-- (BOOL)copyImageDataForOpenGL:(CFDataRef)imageData
-{    
+- (BOOL)copyImageDataForOpenGL:(CFDataRef)imageData {
     if (_pngData) {
         delete[] _pngData;
     }
-    
     _pngData = new unsigned char[_width * _height * _channels];
     const int rowSize = _width * _channels;
     const unsigned char* pixels = (unsigned char*)CFDataGetBytePtr(imageData);
-
     // Copy the row data from bottom to top
     for (int i = 0; i < _height; ++i) {
         memcpy(_pngData + rowSize * i, pixels + rowSize * (_height - 1 - i), _width * _channels);
     }
-    
     return YES;
 }
 

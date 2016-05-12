@@ -16,7 +16,6 @@ typedef enum tagMEDIA_STATE {
     STOPPED,
     PLAYING,
     READY,
-    PLAYING_FULLSCREEN,
     NOT_READY,
     ERROR
 } MEDIA_STATE;
@@ -26,26 +25,12 @@ typedef enum tagMEDIA_STATE {
 // calling the load and play methods
 static const float VIDEO_PLAYBACK_CURRENT_POSITION = -1.0f;
 
-
-// Use our own view controller instead of MPMoviePlayerViewController so we can
-// control its behaviour exactly as we want it
-@interface MovieViewController : UIViewController
-
-@property (nonatomic, readonly) MPMoviePlayerController* moviePlayer;
-
-@end
-
-
 @interface VideoPlayerHelper : NSObject {
 @private
     
     // AVPlayer
     AVPlayer* player;
     CMTime playerCursorStartPosition;
-    
-    // Native playback
-    MovieViewController* movieViewController;
-    BOOL resumeOnTexturePlayback;
     
     // Timing
     CFTimeInterval mediaStartTime;
@@ -94,33 +79,26 @@ static const float VIDEO_PLAYBACK_CURRENT_POSITION = -1.0f;
         SYNC_AHEAD,
         SYNC_BEHIND
     } syncStatus;
-    
-    // Media player type
-    enum tagPLAYER_TYPE {
-        PLAYER_TYPE_ON_TEXTURE,
-        PLAYER_TYPE_NATIVE
-    } playerType;
 }
-
 
 @property (nonatomic, retain) AVPlayerItemVideoOutput *videoOutput;
 
 
 - (id)initMe;
-- (BOOL)load:(NSString*)filename playImmediately:(BOOL)playOnTextureImmediately fromPosition:(float)seekPosition;
+- (BOOL)load:(NSString*)filename fromPosition:(float)seekPosition;
 - (BOOL)unload;
-- (BOOL)isPlayableOnTexture;
-- (BOOL)isPlayableFullscreen;
 - (MEDIA_STATE)getStatus;
 - (int)getVideoHeight;
 - (int)getVideoWidth;
 - (float)getLength;
-- (BOOL)play:(BOOL)fullscreen fromPosition:(float)seekPosition;
+- (BOOL)play:(float)seekPosition;
+- (BOOL)replay;
 - (BOOL)pause;
 - (BOOL)stop;
 - (GLuint)updateVideoData;
 - (BOOL)seekTo:(float)position;
 - (float)getCurrentPosition;
 - (BOOL)setVolume:(float)volume;
+- (void)setPlayImmediately:(BOOL)state;
 
 @end
