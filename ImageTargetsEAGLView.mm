@@ -1,11 +1,3 @@
-/*===============================================================================
-Copyright (c) 2016 PTC Inc. All Rights Reserved.
-
-Copyright (c) 2012-2015 Qualcomm Connected Experiences, Inc. All Rights Reserved.
-
-Vuforia is a trademark of PTC Inc., registered in the United States and other 
-countries.
-===============================================================================*/
 
 #import <QuartzCore/QuartzCore.h>
 #import <OpenGLES/ES2/gl.h>
@@ -48,15 +40,18 @@ countries.
 //******************************************************************************
 
 namespace {
-    
+
+#define VIDEOZOOM 220
+
     NSString* serverName = @"oaklandfenceproject.org.s3-website-us-west-1.amazonaws.com";
 
     // Model scale factor
-    float targetWidth = 0.0f;
-    float targetHeight = 0.0f;
     float targetAspect = 1.0f;
-    const GLvoid* texCoords;
-    GLuint previousTexture = 0;
+    float projectionAspect = 1.0f;
+    float videoAspect = 0.5625f;
+
+    GLint framebufferWidth;
+    GLint framebufferHeight;
     
     // Video quad texture coordinates
     const GLfloat videoQuadTextureCoords[] = {
@@ -72,19 +67,22 @@ namespace {
     // Lock to synchronise data that is (potentially) accessed concurrently
     NSLock* dataLock;
 
-    int playState;  // state machine
+    int playState = -2;  // state machine
     int playCode;   //
     int playCount;  // state counter
     float playSlerp;    // animation slerp timer
     NSString *playName; // name of image found
     
-    Texture* defaultTextureHandle = 0;
-    Texture* textureHandle = 0;
-    Texture* textureHandlePreamble = 0;
-    Texture* textureHandleBumper = 0;
+    Texture* introTextureHandle = 0;        // a banner image
+    Texture* defaultTextureHandle = 0;      // a fall back image for network failures
+    Texture* videoTextureHandle = 0;        // a fake texture that to overload with video
+    Texture* textureHandlePreamble = 0;     // prior to the video playing show this image
+    Texture* textureHandleBumper = 0;       // after the video wraps up show this image
+    
+    Texture* textureHandle = 0;             // currently active texture handle
 
-    GLuint defaultTextureID = 0;
-    GLuint textureID = 0;
+    GLKTextureInfo* text = 0;
+    
     GLKMatrix4 glmvp44;
     GLKMatrix4 pose;
     
@@ -125,42 +123,70 @@ namespace {
 {
     self = [super initWithFrame:frame];
     
-    if (self) {
-        vapp = app;
+    if (!self) return 0;
 
-        // Enable retina mode if available on this device
-        if (YES == [vapp isRetinaDisplay]) {
-            [self setContentScaleFactor:[UIScreen mainScreen].nativeScale];
-        }
-
-        // Create the OpenGL ES context
-        context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
-        
-        // The EAGLContext must be set for each thread that wishes to use it.
-        // Set it the first time this method is called (on the main thread)
-        if (context != [EAGLContext currentContext]) {
-            [EAGLContext setCurrentContext:context];
-        }
-
-        [self initShaders];
+    vapp = app;
     
-        // start video player
-        videoPlayerHelper = [[VideoPlayerHelper alloc] initMe];
-        videoPlaybackTime = VIDEO_PLAYBACK_CURRENT_POSITION;
-
-        // manually load a fall back image to use in some cases if no network provided image
-        defaultTextureHandle = [[Texture alloc] initWithImageFile:@"default.png"];
-        if(defaultTextureHandle != NULL && [defaultTextureHandle isLoaded]) {
-            glGenTextures(1, &defaultTextureID);
-            [defaultTextureHandle setTextureID:defaultTextureID];
-            glBindTexture(GL_TEXTURE_2D, defaultTextureID);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, [defaultTextureHandle width], [defaultTextureHandle height], 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)[defaultTextureHandle pngData]);
-        }
+    if (YES == [vapp isRetinaDisplay]) {
+        [self setContentScaleFactor:[UIScreen mainScreen].nativeScale];
     }
     
+    context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    
+    if (context != [EAGLContext currentContext]) {
+        [EAGLContext setCurrentContext:context];
+    }
+    
+    [self initShaders];
+    
+    videoPlayerHelper = [[VideoPlayerHelper alloc] initMe];
+    videoPlaybackTime = VIDEO_PLAYBACK_CURRENT_POSITION;
+    
+    defaultTextureHandle = [[Texture alloc] initWithImageFile:@"default.png"];
+    introTextureHandle = [[Texture alloc] initWithImageFile:@"startscreen.png"];
+    videoTextureHandle = [[Texture alloc] initWithImageFile:@"intro.png"];
+    
+    //text = [self makeText:@"hello"];
+
     return self;
+}
+
+- (GLKTextureInfo*)makeText:(NSString*)words {
+    
+    CGSize size = CGSizeMake(1024,1024);
+    float scale = [[UIScreen mainScreen] scale];
+    
+    UIGraphicsBeginImageContextWithOptions(size, NO, scale);
+
+    CGContextRef c = UIGraphicsGetCurrentContext();
+    CGContextScaleCTM(c, 1, -1);
+    CGContextSetRGBFillColor(c, 1.0, 1.0, 0.0, 1.0);
+    CGContextSetLineWidth(c, 2.0);
+    //CGContextSelectFont(c, "Helvetica", 10.0, kCGEncodingMacRoman);
+    CGContextSetCharacterSpacing(c, 1.7);
+    CGContextSetTextDrawingMode(c, kCGTextFill);
+    //CGContextShowTextAtPoint(c, 100.0, 100.0, "SOME TEXT", 9);
+    CGContextSetTextDrawingMode(c, kCGTextFill);
+    [[UIColor redColor] setFill];
+    [words drawAtPoint:CGPointMake(512, 512) withAttributes:@{NSFontAttributeName:[UIFont fontWithName:@"Helvetica"  size:17]}];
+    
+    
+    // drawing with a white stroke color
+    CGContextSetRGBStrokeColor(c, 1.0, 1.0, 1.0, 1.0);
+    // drawing with a white fill color
+    CGContextSetRGBFillColor(c, 1.0, 1.0, 1.0, 1.0);
+    // Add Filled Rectangle,
+    CGContextFillRect(c, CGRectMake(0.0, 0.0, 500, 500));
+
+    
+    CGImageRef image =  CGBitmapContextCreateImage(c);
+
+    UIGraphicsEndImageContext();
+    
+    GLKTextureInfo *texture = [GLKTextureLoader textureWithCGImage:image options:nil error:nil];
+    CGImageRelease(image);
+
+    return texture;
 }
 
 - (void)dealloc {
@@ -196,54 +222,48 @@ namespace {
 
 - (void)initShaders {
     shaderProgramID = [SampleApplicationShaderUtils createProgramWithVertexShaderFileName:@"Simple.vertsh" fragmentShaderFileName:@"Simple.fragsh"];
-    if (0 < shaderProgramID) {
-        vertexHandle = glGetAttribLocation(shaderProgramID, "vertexPosition");
-        normalHandle = glGetAttribLocation(shaderProgramID, "vertexNormal");
-        textureCoordHandle = glGetAttribLocation(shaderProgramID, "vertexTexCoord");
-        mvpMatrixHandle = glGetUniformLocation(shaderProgramID, "modelViewProjectionMatrix");
-        texSampler2DHandle  = glGetUniformLocation(shaderProgramID,"texSampler2D");
-    } else {
+    if (shaderProgramID <= 0) {
         NSLog(@"Could not initialise augmentation shader");
+        return;
     }
+    vertexHandle = glGetAttribLocation(shaderProgramID, "vertexPosition");
+    normalHandle = glGetAttribLocation(shaderProgramID, "vertexNormal");
+    textureCoordHandle = glGetAttribLocation(shaderProgramID, "vertexTexCoord");
+    mvpMatrixHandle = glGetUniformLocation(shaderProgramID, "modelViewProjectionMatrix");
+    texSampler2DHandle  = glGetUniformLocation(shaderProgramID,"texSampler2D");
 }
 
 - (void)createFramebuffer {
     if (!context) {
         return;
     }
-    // Create default framebuffer object
     glGenFramebuffers(1, &defaultFramebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebuffer);
     
-    // Create colour renderbuffer and allocate backing store
     glGenRenderbuffers(1, &colorRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
     
-    // Allocate the renderbuffer's storage (shared with the drawable object)
     [context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer*)self.layer];
-    GLint framebufferWidth;
-    GLint framebufferHeight;
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &framebufferWidth);
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &framebufferHeight);
     
-    // Create the depth render buffer and allocate storage
     glGenRenderbuffers(1, &depthRenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, framebufferWidth, framebufferHeight);
     
-    // Attach colour and depth render buffers to the frame buffer
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorRenderbuffer);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderbuffer);
     
-    // Leave the colour render buffer bound so future rendering operations will act on it
     glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
 }
 
 
 - (void)deleteFramebuffer {
+
     if (!context) {
         return;
     }
+
     [EAGLContext setCurrentContext:context];
     
     if (defaultFramebuffer) {
@@ -303,7 +323,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
         Vuforia::State state = Vuforia::Renderer::getInstance().begin();
 
         {
-            Vuforia::Renderer::getInstance().drawVideoBackground();
+            if(playSlerp<1)Vuforia::Renderer::getInstance().drawVideoBackground();
             
             glDisable(GL_DEPTH_TEST);
             glDisable(GL_CULL_FACE);
@@ -337,14 +357,249 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     return (UIViewController *)responder;
 }
 
+
+- (NSString*) findSupporter:(NSString*)name {
+    // XXX this is pretty sloppy...
+    if( [name isEqualToString:@"fantastic1"]) return @"fantasticnegrito.com";
+    if( [name isEqualToString:@"fantastic2"]) return @"fantasticnegrito.com";
+    if( [name isEqualToString:@"fantastic3"]) return @"fantasticnegrito.com";
+    if( [name isEqualToString:@"fantastic4"]) return @"fantasticnegrito.com";
+    if( [name isEqualToString:@"fantastic5"]) return @"fantasticnegrito.com";
+    if( [name isEqualToString:@"fantastic6"]) return @"fantasticnegrito.com";
+    if( [name isEqualToString:@"sunshine1"]) return @"instagram.com/demahjiae";
+    if( [name isEqualToString:@"silas1"]) return @"instagram.com/ovrkast";
+    if( [name isEqualToString:@"tonea1"]) return nil;
+    if( [name isEqualToString:@"britt1"]) return @"brittsense.com";
+    if( [name isEqualToString:@"britt2"]) return @"brittsense.com";
+    if( [name isEqualToString:@"tyrone"]) return @"chrisjohnsonphotographer.com";
+    return nil;
+}
+
+- (NSString*) findLearn:(NSString*)name {
+    // XXX this is pretty sloppy...
+    if( [name isEqualToString:@"fantastic1"]) return @"www.todaysfuturesound.org";
+    if( [name isEqualToString:@"fantastic2"]) return @"blavity.com";
+    if( [name isEqualToString:@"fantastic3"]) return @"www.accfb.org";
+    if( [name isEqualToString:@"fantastic4"]) return @"acsbcd.org";
+    if( [name isEqualToString:@"fantastic5"]) return @"protectoaklandkids.org";
+    if( [name isEqualToString:@"fantastic6"]) return @"www.eocp.net";
+    if( [name isEqualToString:@"sunshine1"]) return @"www.hiddengeniusproject.org";
+    if( [name isEqualToString:@"silas1"]) return @"www.eastsideartsalliance.com";
+    if( [name isEqualToString:@"tonea1"]) return @"www.xanthos.org/behavioral-health-care-services.html";
+    if( [name isEqualToString:@"britt1"]) return @"eoydc.org";
+    if( [name isEqualToString:@"britt2"]) return @"www.destinyarts.org";
+    if( [name isEqualToString:@"tyrone"]) return @"www.hiddengeniusproject.org";
+    return nil;
+}
+
+- (void) bumperTouch {
+    
+    if(!touched) return;
+    touched = NO;
+    NSLog(@"state 3: touched at %f,%f",touchpoint.x,touchpoint.y);
+
+    CGRect mainBounds = [[UIScreen mainScreen] bounds];
+
+    int state = 10;
+    if(touchpoint.x > mainBounds.size.width * 0.8f) {
+        // top row
+        if(touchpoint.y < mainBounds.size.height * 0.2f) {
+            // home
+            state = 20;
+        } else if(touchpoint.y < mainBounds.size.height * 0.65f) {
+            // nothing
+        } else {
+            // menu
+            state = 30;
+        }
+    } else if (touchpoint.x > mainBounds.size.width * 0.2f) {
+        // middle row
+        if(touchpoint.y < mainBounds.size.height * 0.36f) {
+            // support
+            state = 40;
+        } else if(touchpoint.y < mainBounds.size.height * 0.65f) {
+            // learn
+            state = 50;
+        } else {
+            // join
+            state = 60;
+        }
+    } else {
+        // bottom row
+        if(touchpoint.y < mainBounds.size.height * 0.2) {
+            // replay
+            state = 70;
+        } else if(touchpoint.y < mainBounds.size.height * 0.56f) {
+            // nothing
+        } else if(touchpoint.y < mainBounds.size.height * 0.66f) {
+            // facebook
+            state = 80;
+        } else if(touchpoint.y < mainBounds.size.height * 0.76f) {
+            // twitter
+            state = 90;
+        } else if(touchpoint.y < mainBounds.size.height * 0.86f) {
+            // instagram
+            state = 100;
+        } else if(touchpoint.y < mainBounds.size.height * 0.86f) {
+            // mail
+            state = 110;
+        }
+    }
+    
+    switch(state) {
+        case 10:
+            break;
+        case 20:
+            // fall through
+        case 30:
+            NSLog(@"button: home & menu");
+            playCount = 0;
+            playState = 4;
+            break;
+        case 40:
+            if(TRUE) {
+                NSLog(@"button: support an artist");
+                [videoPlayerHelper setPlayImmediately:FALSE];
+                [videoPlayerHelper stop];
+                playSlerp = 0;
+                playCount = 0;
+                playCode = -1;
+                textureHandle = 0;
+                playState = 999;
+                NSString* path = [self findSupporter:playName];
+                if(path) {
+                    NSString *urlstr = [NSString stringWithFormat:@"http://%@",path];
+                    //NSString *urlstr = [NSString stringWithFormat:@"http://%@/%@-more.html",serverName,playName];
+                    NSURL *url = [NSURL URLWithString:urlstr];
+                    [[UIApplication sharedApplication] openURL:url];
+                }
+            }
+            break;
+        case 50:
+            if(TRUE) {
+                NSLog(@"button: learn more");
+                [videoPlayerHelper setPlayImmediately:FALSE];
+                [videoPlayerHelper stop];
+                playSlerp = 0;
+                playCount = 0;
+                playCode = -1;
+                textureHandle = 0;
+                playState = 999;
+                NSString* path = [self findLearn:playName];
+                if(path) {
+                    NSString *urlstr = [NSString stringWithFormat:@"http://%@",path];
+                    //NSString *urlstr = [NSString stringWithFormat:@"http://%@/%@-more.html",serverName,playName];
+                    NSURL *url = [NSURL URLWithString:urlstr];
+                    [[UIApplication sharedApplication] openURL:url];
+                }
+            }
+            break;
+        case 60:
+            if(TRUE) {
+                NSLog(@"button: help");
+                [videoPlayerHelper setPlayImmediately:FALSE];
+                [videoPlayerHelper stop];
+                playSlerp = 0;
+                playCount = 0;
+                playCode = -1;
+                textureHandle = 0;
+                playState = 999;
+                NSURL *url = [NSURL URLWithString:@"http://oaklandfenceproject.org/volunteer"];
+                [[UIApplication sharedApplication] openURL:url];
+            }
+            break;
+        case 70:
+            if(TRUE) {
+                NSLog(@"button: replay");
+                playCount = 0;
+                playSlerp = 1;
+                textureHandle = textureHandlePreamble;
+                if(FALSE) {
+                    playState = 1;
+                    NSString* url = [NSString stringWithFormat:@"http://%@/%@.mp4",serverName,playName];
+                    [videoPlayerHelper stop];
+                    [videoPlayerHelper unload];
+                    [videoPlayerHelper setPlayImmediately:TRUE];
+                    [videoPlayerHelper load:url fromPosition:0];
+                } else {
+                    playState = 2;
+                    videoTextureHandle.textureID = 0;
+                    [videoPlayerHelper setPlayImmediately:TRUE];
+                    [videoPlayerHelper replay];
+                }
+            }
+            break;
+        case 80:
+            //facebook
+            [videoPlayerHelper setPlayImmediately:FALSE];
+            [videoPlayerHelper stop];
+            playSlerp = 0;
+            playCount = 0;
+            playCode = -1;
+            textureHandle = 0;
+            playState = 999;
+            if(![[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"fb://profile"]]) {
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://www.facebook.com/oaklandfenceproject"]];
+            }
+            break;
+        case 90:
+            //twitter
+            [videoPlayerHelper setPlayImmediately:FALSE];
+            [videoPlayerHelper stop];
+            playSlerp = 0;
+            playCount = 0;
+            playCode = -1;
+            textureHandle = 0;
+            playState = 999;
+            if(![[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"twitter://user?screen_name=oaklandfenceproject"]]) {
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://twitter.com/oaklandfenceproject"]];
+            }
+            break;
+        case 100:
+            if(TRUE) {
+                [videoPlayerHelper setPlayImmediately:FALSE];
+                [videoPlayerHelper stop];
+                playSlerp = 0;
+                playCount = 0;
+                playCode = -1;
+                textureHandle = 0;
+                playState = 999;
+                NSURL *instagramURL = [NSURL URLWithString:@"instagram://user?username=USERNAME"];
+                if ([[UIApplication sharedApplication] canOpenURL:instagramURL]) {
+                    [[UIApplication sharedApplication] openURL:instagramURL];
+                }
+            }
+            break;
+        case 110:
+            // mail
+            if(TRUE) {
+                [videoPlayerHelper setPlayImmediately:FALSE];
+                [videoPlayerHelper stop];
+                playSlerp = 0;
+                playCount = 0;
+                playCode = -1;
+                textureHandle = 0;
+                playState = 999;
+                NSString *subject = [NSString stringWithFormat:@"oaklandfenceproject.org"];
+                NSString *mail = [NSString stringWithFormat:@"Check out the oaklandfenceproject at http://oaklandfenceproject.org!"];
+                NSURL *url = [[NSURL alloc] initWithString:[NSString stringWithFormat:@"mailto:?to=%@&subject=%@",
+                                                            [mail stringByAddingPercentEscapesUsingEncoding:NSASCIIStringEncoding],
+                                                            [subject stringByAddingPercentEscapesUsingEncoding:NSASCIIStringEncoding]]];
+                [[UIApplication sharedApplication] openURL:url];
+            }
+            break;
+        case 120:
+            break;
+    }
+    
+    
+    
+}
+
+
 - (void) renderTrackablesNew:(Vuforia::State)state {
  
     //[dataLock lock];
-
-    // choose static image boundaries every frame unless video chooses to override later on
-
-    textureID = textureHandle ? textureHandle.textureID : 0;
-    texCoords = quadTexCoords;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // state engine
@@ -352,20 +607,53 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
  
     MEDIA_STATE currentStatus = [videoPlayerHelper getStatus];
     int numActiveTrackables = state.getNumTrackableResults();
+    
+    // try to always use the default aspect - which can be set by the target
+    targetAspect = projectionAspect;
 
     switch(playState) {
+        case -2:
+            textureHandle = introTextureHandle;
+            playSlerp = 0.9999;
+            if(touched) {
+                touched = 0;
+                playState = 0;
+                playCount = 0;
+                playCode = -1;
+                textureHandle = 0;
+                playSlerp = 0;
+            }
+            break;
+        case -1:
+            // force a delay so replays cannot happen so easily
+            playCount++;
+            if(playCount<60*2) break;
+            playCount = 0;
+            playState = 0;
+            playSlerp = 0;
+            break;
+
         case 0:
             // looking for a target
             // once a given target has been observed for n frames then go to state 1
             if(numActiveTrackables>0) {
                 const Vuforia::TrackableResult* trackableResult = state.getTrackableResult(0);
                 const Vuforia::ImageTarget& imageTarget = (const Vuforia::ImageTarget&) trackableResult->getTrackable();
+                
+                // Get size and aspect ratio
+                {
+                    Vuforia::Vec3F size = imageTarget.getSize();
+                    float targetWidth = size.data[0];
+                    float targetHeight = size.data[1];
+                    projectionAspect = targetAspect = targetHeight/targetWidth;
+                }
+                
+                // keep counting how long we see this id
                 if(playCode == imageTarget.getId() && textureHandle != nil) {
-                    // keep counting how long we see this id
                     playCount++;
                     if(playCount > FRAMES_BEFORE_ZOOM) {
                         playCount = 0;
-                        previousTexture = 0;
+                        videoTextureHandle.textureID = 0;
                         playSlerp = 0;
                         NSString  *name = [NSString stringWithFormat:@"%s",imageTarget.getName()];
                         if(playName != nil && [playName isEqualToString:name] && currentStatus == STOPPED) {
@@ -379,8 +667,9 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                                 [videoPlayerHelper setPlayImmediately:TRUE];
                                 [videoPlayerHelper load:url fromPosition:0];
                             } else {
+                                // unused approach - couldn't replay sadly so forced to reload
                                 playState = 2;
-                                previousTexture = 0;
+                                videoTextureHandle.textureID = 0;
                                 [videoPlayerHelper setPlayImmediately:TRUE];
                                 [videoPlayerHelper replay];
                             }
@@ -409,7 +698,6 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                     NSLog(@"state 0: found target");
                 }
             }
-            textureID = textureHandle ? textureHandle.textureID : 0;
             break;
             
         case 1:
@@ -422,7 +710,6 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             // continue zooming in on previously established texture
 
             playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
-            textureID = textureHandle ? textureHandle.textureID : 0;
 
             playCount++;
             if(playCount > FRAMES_DURING_ZOOM) {
@@ -434,7 +721,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             // touch during warm up to just stop
             if(touched) {
                 touched = 0;
-                playState = 0;
+                playState = -1;
                 playCount = 0;
                 playCode = -1;
                 textureHandle = 0;
@@ -449,7 +736,6 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             // continue zooming in
             
             playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
-            textureID = textureHandle ? textureHandle.textureID : 0;
 
             // touch during play to exit
             if(touched) {
@@ -457,25 +743,22 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                 playState = 3;
                 playCount = 0;
                 playCode = -1;
-                previousTexture = 0;
+                videoTextureHandle.textureID = 0;
                 textureHandle = textureHandleBumper;
                 [videoPlayerHelper setPlayImmediately:FALSE];
                 [videoPlayerHelper stop];
+                break;
             }
 
             switch(currentStatus) {
                 case PLAYING: {
                     GLuint t = [videoPlayerHelper updateVideoData];
-                    if(t) previousTexture = t;
-                    if(!t) t = previousTexture;
                     if(t) {
-                        textureID = t;
-                        texCoords = videoQuadTextureCoords;
+                        videoTextureHandle.textureID = t;
+                        textureHandle = videoTextureHandle;
                     }
-                    // arguably use video dimensions but this has very little effect give current hard coded display sizes
-                    //targetWidth = (float)[videoPlayerHelper getVideoHeight];
-                    //targetHeight = (float)[videoPlayerHelper getVideoWidth];
-                    //targetAspect = (float)[videoPlayerHelper getVideoHeight] / (float)[videoPlayerHelper getVideoWidth];
+                    // find the video aspect as soon was we have data
+                    videoAspect = (float)[videoPlayerHelper getVideoHeight] / (float)[videoPlayerHelper getVideoWidth];
                     break;
                 }
                 case REACHED_END:
@@ -488,9 +771,8 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                     break;
 
                 case PAUSED:
-                    if(previousTexture) {
-                        textureID = previousTexture;
-                        texCoords = videoQuadTextureCoords;
+                    if(videoTextureHandle.textureID) {
+                        textureHandle = videoTextureHandle;
                     }
                     break;
                     
@@ -499,7 +781,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                     break;
 
                 case ERROR:
-                    previousTexture = 0;
+                    videoTextureHandle.textureID = 0;
                     playState = 999;
                     NSLog(@"Error: something went wrong %d",currentStatus);
                     break;
@@ -521,60 +803,8 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                 playState = 4;
             }
             
-            if(touched) {
-                touched = NO;
-                NSLog(@"state 3: touched at %f,%f",touchpoint.x,touchpoint.y);
-                CGRect mainBounds = [[UIScreen mainScreen] bounds];
-                if(touchpoint.y < mainBounds.size.height * 0.3f) {
-                    if(touchpoint.x > mainBounds.size.width * 0.5f) {
-                        NSLog(@"state 3: dismiss");
-                        playCount = 0;
-                        playState = 4;
-                    } else {
-                        NSLog(@"state 3: replay touched");
-                        playCount = 0;
-                        playSlerp = 1;
-                        textureHandle = textureHandlePreamble;
-                        if(FALSE) {
-                            playState = 1;
-                            NSString* url = [NSString stringWithFormat:@"http://%@/%@.mp4",serverName,playName];
-                            [videoPlayerHelper stop];
-                            [videoPlayerHelper unload];
-                            [videoPlayerHelper setPlayImmediately:TRUE];
-                            [videoPlayerHelper load:url fromPosition:0];
-                        } else {
-                            playState = 2;
-                            previousTexture = 0;
-                            [videoPlayerHelper setPlayImmediately:TRUE];
-                            [videoPlayerHelper replay];
-                        }
-                    }
-                }
-                else if(touchpoint.y < mainBounds.size.height * 0.6f) {
-                    [videoPlayerHelper setPlayImmediately:FALSE];
-                    [videoPlayerHelper stop];
-                    playSlerp = 0;
-                    playCount = 0;
-                    playCode = -1;
-                    textureHandle = 0;
-                    playState = 999; // XXX TODO - we really should suspend
-                    NSString *urlstr = [NSString stringWithFormat:@"http://%@/%@-more.html",serverName,playName];
-                    NSURL *url = [NSURL URLWithString:urlstr];
-                    [[UIApplication sharedApplication] openURL:url];
-                }
-                else {
-                    [videoPlayerHelper setPlayImmediately:FALSE];
-                    [videoPlayerHelper stop];
-                    playSlerp = 0;
-                    playCount = 0;
-                    playCode = -1;
-                    textureHandle = 0;
-                    playState = 999; // XXX TODO - we really should suspend
-                    NSString *urlstr = [NSString stringWithFormat:@"http://%@/%@-buy.html",serverName,playName];
-                    NSURL *url = [NSURL URLWithString:urlstr];
-                    [[UIApplication sharedApplication] openURL:url];
-                }
-            }
+            [self bumperTouch];
+            
             break;
 
         case 4:
@@ -590,13 +820,14 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             
         case 999:
             playSlerp = playSlerp - 0.1; if(playSlerp<0) playSlerp = 0;
-            playState = 0;
+            playState = -1;
             playCount = 0;
             playCode = -1;
             textureHandle = 0;
-            previousTexture = 0;
+            videoTextureHandle.textureID = 0;
             [videoPlayerHelper setPlayImmediately:FALSE];
             [videoPlayerHelper stop];
+            NSLog(@"state 999: returning to default");
             break;
 
         default:
@@ -605,24 +836,23 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     
     //[dataLock unlock];
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // finalize rendering baed on state
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // render overlay if state engine mode is in a post detection mode
-    if(playState < 1) return;
-
-    // if the system doesn't have an idea of what it is going to render then get out
-    if(!textureHandle || !textureID) return;
-
     // update pose if we have it - not a big deal if we don't
     if(state.getNumTrackableResults() > 0) {
         [self buildPose:state];
     }
 
     // render the texture in textureID to an interpolation of pose and animated coordinates
-    [self buildTrans];
-    [self renderQuad];
+    if(textureHandle && textureHandle.textureID) {
+        [self renderQuad];
+    }
+
+    /*
+    // text
+    if(text) {
+        [self buildTrans:1];
+        [self renderQuad:text.target name:text.name blend:TRUE];
+    }
+    */
 
 }
 
@@ -632,13 +862,6 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
 
     // Get the trackable
     const Vuforia::TrackableResult* trackableResult = state.getTrackableResult(0);
-    const Vuforia::ImageTarget& imageTarget = (const Vuforia::ImageTarget&) trackableResult->getTrackable();
-    
-    // Get size and aspect ratio
-    Vuforia::Vec3F size = imageTarget.getSize();
-    targetWidth = size.data[0];
-    targetHeight = size.data[1];
-    targetAspect = targetHeight/targetWidth;
     
     // Get full pose matrix
     const Vuforia::Matrix34F& trackablePose = trackableResult->getPose();
@@ -647,8 +870,8 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
 }
 
 
-- (void) buildTrans {
-
+- (void) renderQuad {
+    
     // get translation from matrix
     GLKVector3 glxyz1 = { pose.m[12], pose.m[13], pose.m[14] };
     
@@ -656,8 +879,8 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     GLKQuaternion glrot1 = GLKQuaternionMakeWithMatrix4(pose);
     
     // bounce target
-    GLKQuaternion glrot2 = GLKQuaternionMakeWithAngleAndAxis(-3.14159265359,1,0,0);
-    GLKVector3 glxyz2 = { 0,0,220 }; // 200 covers screen, 300 fits with margin
+    GLKQuaternion glrot2 = GLKQuaternionMake(-1,0,0,0); // GLKQuaternionMakeWithAngleAndAxis(-3.14159265359,1,0,0);
+    GLKVector3 glxyz2 = { 0,0, VIDEOZOOM };
 
     // slerp to it
     GLKQuaternion glrot = GLKQuaternionSlerp(glrot1,glrot2,playSlerp);
@@ -669,36 +892,71 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     gl44.m[13] = glxyz.v[1];
     gl44.m[14] = glxyz.v[2];
 
-    SampleApplicationUtils::scalePoseMatrix(1.0f,targetAspect,1.0f,&gl44.m[0]);
+    
+    BOOL blend = textureHandle == introTextureHandle ? TRUE : FALSE;
+    GLuint name = textureHandle.textureID;
+
+    // projectionAspect is the aspect of the rectangle in the real world to fit the display
+    // videoAspect is the aspect of the video to fit the display
+    // - right now there is an issue with the bumper and startup using slerp - which allows videoaspect to pollute normal aspect ratio
+    
+    float aspect = targetAspect * (1.0f - playSlerp) + videoAspect * playSlerp;
+
+    //// test
+/*
+ 
+    if(textureHandle == videoTextureHandle) {
+        aspect = videoAspect;
+    } else {
+        aspect = defaultAspect;
+    }
+    if(textureHandle == textureHandlePreamble) {
+       // aspect = targetAspect * (1.0f - playSlerp) + videoAspect * playSlerp;
+    }
+*/
+
+    
+    SampleApplicationUtils::scalePoseMatrix(1.0f,aspect,1.0f,&gl44.m[0]);
     //SampleApplicationUtils::scalePoseMatrix(targetWidth, targetWidth * targetAspect,targetWidth,&gl44.m[0]);
     SampleApplicationUtils::multiplyMatrix(&vapp.projectionMatrix.data[0], &gl44.m[0], &glmvp44.m[0]);
 
-}
-
-- (void) renderQuad {
-    
     glUseProgram(shaderProgramID);
-    
+
     glVertexAttribPointer(vertexHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadVertices2);
     glVertexAttribPointer(normalHandle, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadNormals);
-    glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)texCoords);
+
+    if(textureHandle == videoTextureHandle) {
+        glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)videoQuadTextureCoords);
+    } else {
+        glVertexAttribPointer(textureCoordHandle, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid*)quadTexCoords);
+    }
 
     glEnableVertexAttribArray(vertexHandle);
     glEnableVertexAttribArray(normalHandle);
     glEnableVertexAttribArray(textureCoordHandle);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    glBindTexture(GL_TEXTURE_2D,name);
     
     glUniformMatrix4fv(mvpMatrixHandle, 1, GL_FALSE, (GLfloat*)&glmvp44.m[0]);
     glUniform1i(texSampler2DHandle, 0 /*GL_TEXTURE0*/);
     
-    glDrawElements(GL_TRIANGLES, kNumQuadIndices, GL_UNSIGNED_SHORT, (const GLvoid*)quadIndices);
+    if(blend) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDepthMask(false);
+    } else {
+        glDisable(GL_BLEND);
+    }
     
+    glDrawElements(GL_TRIANGLES, kNumQuadIndices, GL_UNSIGNED_SHORT, (const GLvoid*)quadIndices);
+
     glDisableVertexAttribArray(vertexHandle);
     glDisableVertexAttribArray(normalHandle);
     glDisableVertexAttribArray(textureCoordHandle);
-    
+
+    glDisable(GL_BLEND);
+
     SampleApplicationUtils::checkGlError("EAGLView renderFrameVuforia");
     
 }
@@ -736,7 +994,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             NSString  *localstr = [NSString stringWithFormat:@"%s.png",playName];
             NSString *urlstr = [NSString stringWithFormat:@"http://%@/%@",serverName,localstr];
             textures[i] = [[Texture alloc] initWithImageFile3:urlstr local:localstr];
-            NSLog(@"Image Loader - Background time Remaining: %f",[[UIApplication sharedApplication] backgroundTimeRemaining]);
+            NSLog(@"Image loaded name=%s width=%d height=%d",playName, textures[i].width, textures[i].height);
             //[NSThread sleepForTimeInterval:10];
         }
 
@@ -747,7 +1005,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             NSString  *localstr = [NSString stringWithFormat:@"%s-bumper.png",playName];
             NSString *urlstr = [NSString stringWithFormat:@"http://%@/%@",serverName,localstr];
             texturesBumper[i] = [[Texture alloc] initWithImageFile3:urlstr local:localstr];
-            NSLog(@"Image Bumper Loader - Background time Remaining: %f",[[UIApplication sharedApplication] backgroundTimeRemaining]);
+            NSLog(@"Image bumper loaded name=%s width=%d height=%d",playName, texturesBumper[i].width, texturesBumper[i].height);
             //[NSThread sleepForTimeInterval:10];
         }
 

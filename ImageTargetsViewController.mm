@@ -9,10 +9,6 @@
 #import <Vuforia/DataSet.h>
 #import <Vuforia/CameraDevice.h>
 
-//@interface ImageTargetsViewController ()
-//@property (weak, nonatomic) IBOutlet UIImageView *ARViewPlaceholder;
-//@end
-
 @implementation ImageTargetsViewController
 
 @synthesize vapp, eaglView;
@@ -32,13 +28,6 @@ NSString* serverName = @"oaklandfenceproject.org.s3-website-us-west-1.amazonaws.
 - (void)loadView {
 
     self.title = @"Oakland Fence";
-    
-    /*
-    if (self.ARViewPlaceholder != nil) {
-        [self.ARViewPlaceholder removeFromSuperview];
-        self.ARViewPlaceholder = nil;
-    }
-    */
     
     vapp = [[SampleApplicationSession alloc] initWithDelegate:self];
     
@@ -67,8 +56,6 @@ NSString* serverName = @"oaklandfenceproject.org.s3-website-us-west-1.amazonaws.
     tap.delegate = (id<UIGestureRecognizerDelegate>)self;
     [self.view addGestureRecognizer:tap];
     
-    // show loading animation while AR is being initialized
-    //[self showLoadingAnimation];
 }
 
 - (void)handleTap:(UITapGestureRecognizer *)sender {
@@ -133,43 +120,6 @@ NSString* serverName = @"oaklandfenceproject.org.s3-website-us-west-1.amazonaws.
     [super didReceiveMemoryWarning];
 }
 
-
-#pragma mark - loading animation
-
-- (void) showLoadingAnimation {
-    /*
-    CGRect indicatorBounds;
-    CGRect mainBounds = [[UIScreen mainScreen] bounds];
-    int smallerBoundsSize = MIN(mainBounds.size.width, mainBounds.size.height);
-    int largerBoundsSize = MAX(mainBounds.size.width, mainBounds.size.height);
-    UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
-    if (orientation == UIInterfaceOrientationPortrait || orientation == UIInterfaceOrientationPortraitUpsideDown ) {
-        indicatorBounds = CGRectMake(smallerBoundsSize / 2 - 12,
-                                     largerBoundsSize / 2 - 12, 24, 24);
-    }
-    else {
-        indicatorBounds = CGRectMake(largerBoundsSize / 2 - 12,
-                                     smallerBoundsSize / 2 - 12, 24, 24);
-    }
-    
-    UIActivityIndicatorView *loadingIndicator = [[UIActivityIndicatorView alloc]
-                                                  initWithFrame:indicatorBounds];
-    
-    loadingIndicator.tag  = 1;
-    loadingIndicator.activityIndicatorViewStyle = UIActivityIndicatorViewStyleWhiteLarge;
-    [eaglView addSubview:loadingIndicator];
-    [loadingIndicator startAnimating];
-    */
-}
-
-- (void) hideLoadingAnimation {
-    /*
-    UIActivityIndicatorView *loadingIndicator = (UIActivityIndicatorView *)[eaglView viewWithTag:1];
-    [loadingIndicator removeFromSuperview];
-     */
-}
-
-
 #pragma mark - SampleApplicationControl
 
 - (bool) doInitTrackers {
@@ -225,7 +175,7 @@ NSString* serverName = @"oaklandfenceproject.org.s3-website-us-west-1.amazonaws.
     //}
     //if(date1 != nil) {} // [[NSFileManager defaultManager] fileExistsAtPath:filePath1]) {}
     
-    NSString  *stringURL1 = [NSString stringWithFormat:@"%http://@/%@.xml",serverName,name];
+    NSString  *stringURL1 = [NSString stringWithFormat:@"http://%@/%@.xml",serverName,name];
     NSURL* url1 = [NSURL URLWithString:stringURL1];
     NSData* urlData1 = [NSData dataWithContentsOfURL:url1];
     if (!urlData1) return NO;

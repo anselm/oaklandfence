@@ -6,7 +6,7 @@
  ===============================================================================*/
 
 #import <Foundation/Foundation.h>
-
+#import <OpenGLES/ES2/gl.h>
 
 @interface Texture : NSObject {
 }
@@ -16,7 +16,7 @@
 @property (nonatomic, readonly) int width;
 @property (nonatomic, readonly) int height;
 @property (nonatomic, readonly) int channels;
-@property (nonatomic, readwrite) int textureID;
+@property (nonatomic, readwrite) GLuint textureID;
 @property (nonatomic, readonly) unsigned char* pngData;
 @property (nonatomic, readonly) NSString* tag;
 

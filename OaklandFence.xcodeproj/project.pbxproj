@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		43236C9D1CF0FDEB0025E879 /* intro.png in Resources */ = {isa = PBXBuildFile; fileRef = 43236C9C1CF0FDEB0025E879 /* intro.png */; };
+		43236C9F1CF10EDA0025E879 /* startscreen.png in Resources */ = {isa = PBXBuildFile; fileRef = 43236C9E1CF10EDA0025E879 /* startscreen.png */; };
 		43D0A3231C9F7ED0007E1F21 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3011C9F7ECF007E1F21 /* AppDelegate.m */; };
 		43D0A3241C9F7ED0007E1F21 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 43D0A3021C9F7ECF007E1F21 /* en.lproj */; };
 		43D0A3251C9F7ED0007E1F21 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43D0A3031C9F7ECF007E1F21 /* Images.xcassets */; };
@@ -17,7 +19,6 @@
 		43D0A32D1C9F7ED0007E1F21 /* Line.vertsh in Resources */ = {isa = PBXBuildFile; fileRef = 43D0A30D1C9F7ECF007E1F21 /* Line.vertsh */; };
 		43D0A32E1C9F7ED0007E1F21 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 43D0A30E1C9F7ECF007E1F21 /* Localizable.strings */; };
 		43D0A32F1C9F7ED0007E1F21 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A30F1C9F7ECF007E1F21 /* main.m */; };
-		43D0A3331C9F7ED0007E1F21 /* SampleApplication3DModel.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3151C9F7ECF007E1F21 /* SampleApplication3DModel.m */; };
 		43D0A3341C9F7ED0007E1F21 /* SampleApplicationSession.mm in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3171C9F7ECF007E1F21 /* SampleApplicationSession.mm */; };
 		43D0A3351C9F7ED0007E1F21 /* SampleApplicationShaderUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3191C9F7ECF007E1F21 /* SampleApplicationShaderUtils.m */; };
 		43D0A3361C9F7ED0007E1F21 /* SampleApplicationUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A31A1C9F7ECF007E1F21 /* SampleApplicationUtils.cpp */; };
@@ -44,6 +45,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		43236C9C1CF0FDEB0025E879 /* intro.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = intro.png; path = Resources/intro.png; sourceTree = "<group>"; };
+		43236C9E1CF10EDA0025E879 /* startscreen.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = startscreen.png; path = Resources/startscreen.png; sourceTree = "<group>"; };
 		4363D3A11C9F8518005D449E /* OaklandFence-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "OaklandFence-Info.plist"; sourceTree = "<group>"; };
 		43BB93441C9EF95100C1DE29 /* Vuforia */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Vuforia; sourceTree = "<group>"; };
 		43D0A3001C9F7ECF007E1F21 /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -61,15 +64,13 @@
 		43D0A30F1C9F7ECF007E1F21 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		43D0A3111C9F7ECF007E1F21 /* Quad.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Quad.h; sourceTree = "<group>"; };
 		43D0A3131C9F7ECF007E1F21 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources; sourceTree = "<group>"; };
-		43D0A3141C9F7ECF007E1F21 /* SampleApplication3DModel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SampleApplication3DModel.h; sourceTree = "<group>"; };
-		43D0A3151C9F7ECF007E1F21 /* SampleApplication3DModel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SampleApplication3DModel.m; sourceTree = "<group>"; };
 		43D0A3161C9F7ECF007E1F21 /* SampleApplicationSession.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SampleApplicationSession.h; sourceTree = "<group>"; };
 		43D0A3171C9F7ECF007E1F21 /* SampleApplicationSession.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SampleApplicationSession.mm; sourceTree = "<group>"; };
 		43D0A3181C9F7ECF007E1F21 /* SampleApplicationShaderUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SampleApplicationShaderUtils.h; sourceTree = "<group>"; };
 		43D0A3191C9F7ECF007E1F21 /* SampleApplicationShaderUtils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SampleApplicationShaderUtils.m; sourceTree = "<group>"; };
 		43D0A31A1C9F7ECF007E1F21 /* SampleApplicationUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SampleApplicationUtils.cpp; sourceTree = "<group>"; };
 		43D0A31B1C9F7ECF007E1F21 /* SampleApplicationUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SampleApplicationUtils.h; sourceTree = "<group>"; };
-		43D0A31C1C9F7ECF007E1F21 /* SampleGLResourceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SampleGLResourceHandler.h; sourceTree = "<group>"; };
+		43D0A31C1C9F7ECF007E1F21 /* GLResourceHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GLResourceHandler.h; sourceTree = "<group>"; };
 		43D0A31D1C9F7ECF007E1F21 /* Simple.fragsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Simple.fragsh; sourceTree = "<group>"; };
 		43D0A31E1C9F7ECF007E1F21 /* Simple.vertsh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Simple.vertsh; sourceTree = "<group>"; };
 		43D0A31F1C9F7ECF007E1F21 /* Texture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Texture.h; sourceTree = "<group>"; };
@@ -130,15 +131,13 @@
 				43D0A30F1C9F7ECF007E1F21 /* main.m */,
 				43D0A3001C9F7ECF007E1F21 /* AppDelegate.h */,
 				43D0A3011C9F7ECF007E1F21 /* AppDelegate.m */,
-				43D0A3141C9F7ECF007E1F21 /* SampleApplication3DModel.h */,
-				43D0A3151C9F7ECF007E1F21 /* SampleApplication3DModel.m */,
 				43D0A3161C9F7ECF007E1F21 /* SampleApplicationSession.h */,
 				43D0A3171C9F7ECF007E1F21 /* SampleApplicationSession.mm */,
 				43D0A3181C9F7ECF007E1F21 /* SampleApplicationShaderUtils.h */,
 				43D0A3191C9F7ECF007E1F21 /* SampleApplicationShaderUtils.m */,
 				43D0A31A1C9F7ECF007E1F21 /* SampleApplicationUtils.cpp */,
 				43D0A31B1C9F7ECF007E1F21 /* SampleApplicationUtils.h */,
-				43D0A31C1C9F7ECF007E1F21 /* SampleGLResourceHandler.h */,
+				43D0A31C1C9F7ECF007E1F21 /* GLResourceHandler.h */,
 				43D0A3211C9F7ECF007E1F21 /* VideoPlayerHelper.h */,
 				43D0A3221C9F7ED0007E1F21 /* VideoPlayerHelper.m */,
 				43D0A3041C9F7ECF007E1F21 /* ImageTargetsEAGLView.h */,
@@ -163,6 +162,8 @@
 		D21B07DD1A1B4AA10041ECF3 = {
 			isa = PBXGroup;
 			children = (
+				43236C9E1CF10EDA0025E879 /* startscreen.png */,
+				43236C9C1CF0FDEB0025E879 /* intro.png */,
 				43F0BB7A1CD3E701004251E9 /* default.png */,
 				43FB7BD51C9F85D7007D9402 /* Main.storyboard */,
 				4363D3A11C9F8518005D449E /* OaklandFence-Info.plist */,
@@ -272,6 +273,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				43F0BB7B1CD3E701004251E9 /* default.png in Resources */,
+				43236C9D1CF0FDEB0025E879 /* intro.png in Resources */,
+				43236C9F1CF10EDA0025E879 /* startscreen.png in Resources */,
 				43D0A32C1C9F7ED0007E1F21 /* Line.fragsh in Resources */,
 				43FB7BD61C9F85D7007D9402 /* Main.storyboard in Resources */,
 				43D0A3371C9F7ED0007E1F21 /* Simple.fragsh in Resources */,
@@ -294,7 +297,6 @@
 				43D0A3271C9F7ED0007E1F21 /* ImageTargetsViewController.mm in Sources */,
 				43D0A3361C9F7ED0007E1F21 /* SampleApplicationUtils.cpp in Sources */,
 				43D0A3341C9F7ED0007E1F21 /* SampleApplicationSession.mm in Sources */,
-				43D0A3331C9F7ED0007E1F21 /* SampleApplication3DModel.m in Sources */,
 				43D0A3261C9F7ED0007E1F21 /* ImageTargetsEAGLView.mm in Sources */,
 				43D0A33A1C9F7ED0007E1F21 /* VideoPlayerHelper.m in Sources */,
 				43D0A32F1C9F7ED0007E1F21 /* main.m in Sources */,
@@ -381,6 +383,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 7.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -403,7 +406,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.makerlab.oaklandfence;
 				PRODUCT_NAME = OaklandFence;
 				PROVISIONING_PROFILE = "2c83bbb1-9e4c-4316-94ce-e5452f4699c3";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = "armv7 armv7s arm64";
 			};
 			name = Debug;
@@ -425,7 +428,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.makerlab.oaklandfence;
 				PRODUCT_NAME = OaklandFence;
 				PROVISIONING_PROFILE = "2c83bbb1-9e4c-4316-94ce-e5452f4699c3";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = "armv7 armv7s arm64";
 			};
 			name = Release;

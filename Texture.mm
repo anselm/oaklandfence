@@ -211,16 +211,40 @@
 
 
 - (BOOL)copyImageDataForOpenGL:(CFDataRef)imageData {
+
+    // conceivably this could be called twice
+    
     if (_pngData) {
         delete[] _pngData;
+        glDeleteTextures(1,&_textureID);
+        _textureID = 0;
     }
+
+    // some attempt at failure handling
+    
     _pngData = new unsigned char[_width * _height * _channels];
+    if(!_pngData) return NO;
+
+    // Copy the row data from bottom to top
+    
     const int rowSize = _width * _channels;
     const unsigned char* pixels = (unsigned char*)CFDataGetBytePtr(imageData);
-    // Copy the row data from bottom to top
     for (int i = 0; i < _height; ++i) {
         memcpy(_pngData + rowSize * i, pixels + rowSize * (_height - 1 - i), _width * _channels);
     }
+
+    // Copy over to OpenGL right now - although this is a conflation of textures with opengl
+    
+    {
+        _textureID = 0;
+        glGenTextures(1, &_textureID);
+        glBindTexture(GL_TEXTURE_2D, _textureID);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _width, _height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)_pngData);
+    }
+
+    
     return YES;
 }
 
