@@ -405,7 +405,7 @@
 				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.makerlab.oaklandfence;
 				PRODUCT_NAME = OaklandFence;
-				PROVISIONING_PROFILE = "2c83bbb1-9e4c-4316-94ce-e5452f4699c3";
+				PROVISIONING_PROFILE = "";
 				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = "armv7 armv7s arm64";
 			};
@@ -427,7 +427,7 @@
 				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.makerlab.oaklandfence;
 				PRODUCT_NAME = OaklandFence;
-				PROVISIONING_PROFILE = "2c83bbb1-9e4c-4316-94ce-e5452f4699c3";
+				PROVISIONING_PROFILE = "";
 				TARGETED_DEVICE_FAMILY = 1;
 				VALID_ARCHS = "armv7 armv7s arm64";
 			};

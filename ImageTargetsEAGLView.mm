@@ -41,7 +41,7 @@
 
 namespace {
 
-#define VIDEOZOOM 220
+#define VIDEOZOOM 215
 
     NSString* serverName = @"oaklandfenceproject.org.s3-website-us-west-1.amazonaws.com";
 
@@ -76,8 +76,8 @@ namespace {
     Texture* introTextureHandle = 0;        // a banner image
     Texture* defaultTextureHandle = 0;      // a fall back image for network failures
     Texture* videoTextureHandle = 0;        // a fake texture that to overload with video
-    Texture* textureHandlePreamble = 0;     // prior to the video playing show this image
-    Texture* textureHandleBumper = 0;       // after the video wraps up show this image
+    Texture* preambleTextureHandle = 0;     // prior to the video playing show this image
+    Texture* bumperTextureHandle = 0;       // after the video wraps up show this image
     
     Texture* textureHandle = 0;             // currently active texture handle
 
@@ -196,8 +196,8 @@ namespace {
     }
     defaultTextureHandle = 0;
     textureHandle = 0;
-    textureHandlePreamble = 0;
-    textureHandleBumper = 0;
+    preambleTextureHandle = 0;
+    bumperTextureHandle = 0;
     for (int i = 0; i < kMaxAugmentationTextures; ++i) {
         textures[i] = nil;
     }
@@ -257,7 +257,6 @@ namespace {
     glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
 }
 
-
 - (void)deleteFramebuffer {
 
     if (!context) {
@@ -282,7 +281,6 @@ namespace {
     }
 }
 
-
 - (void)setFramebuffer {
     if (context != [EAGLContext currentContext]) {
         [EAGLContext setCurrentContext:context];
@@ -292,7 +290,6 @@ namespace {
     }
     glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebuffer);
 }
-
 
 - (BOOL)presentFramebuffer {
     glBindRenderbuffer(GL_RENDERBUFFER, colorRenderbuffer);
@@ -323,7 +320,9 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
         Vuforia::State state = Vuforia::Renderer::getInstance().begin();
 
         {
-            if(playSlerp<1)Vuforia::Renderer::getInstance().drawVideoBackground();
+            // a bit of a hack - when an image is full screen don't render camera
+            //if(playSlerp<1)
+            Vuforia::Renderer::getInstance().drawVideoBackground();
             
             glDisable(GL_DEPTH_TEST);
             glDisable(GL_CULL_FACE);
@@ -348,15 +347,18 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
 
 }
 
+//------------------------------------------------------------------------------
+#pragma mark - touch handling
+
+
 #define FRAMES_BEFORE_ZOOM 10
-#define FRAMES_DURING_ZOOM 10
+#define FRAMES_DURING_ZOOM 5
 
 - (UIViewController *)parentViewController {
     UIResponder *responder = self;
     while ([responder isKindOfClass:[UIView class]]) responder = [responder nextResponder];
     return (UIViewController *)responder;
 }
-
 
 - (NSString*) findSupporter:(NSString*)name {
     // XXX this is pretty sloppy...
@@ -513,7 +515,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                 NSLog(@"button: replay");
                 playCount = 0;
                 playSlerp = 1;
-                textureHandle = textureHandlePreamble;
+                textureHandle = preambleTextureHandle;
                 if(FALSE) {
                     playState = 1;
                     NSString* url = [NSString stringWithFormat:@"http://%@/%@.mp4",serverName,playName];
@@ -591,11 +593,18 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
         case 120:
             break;
     }
-    
-    
-    
 }
 
+//------------------------------------------------------------------------------
+#pragma mark - state engine
+
+- (void) stateSet:(int)state texture:(Texture*)texture slerp:(float)slerp {
+    playState = state;          // set state
+    playCount = 0;              // reset a state timer helper
+    playCode = -1;              // reset the id of the last seen marker to nothing
+    playSlerp = slerp;              // typically wipe the front facing image
+    textureHandle = texture;    // set which front facing image will be up
+}
 
 - (void) renderTrackablesNew:(Vuforia::State)state {
  
@@ -607,30 +616,26 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
  
     MEDIA_STATE currentStatus = [videoPlayerHelper getStatus];
     int numActiveTrackables = state.getNumTrackableResults();
-    
+
     // try to always use the default aspect - which can be set by the target
     targetAspect = projectionAspect;
 
     switch(playState) {
         case -2:
-            textureHandle = introTextureHandle;
-            playSlerp = 0.9999;
             if(touched) {
                 touched = 0;
-                playState = 0;
-                playCount = 0;
-                playCode = -1;
-                textureHandle = 0;
-                playSlerp = 0;
+                [self stateSet:0 texture:nil slerp:0];
+            } else {
+                [self stateSet:playState texture:introTextureHandle slerp:0.999];
             }
             break;
+
         case -1:
             // force a delay so replays cannot happen so easily
             playCount++;
-            if(playCount<60*2) break;
-            playCount = 0;
-            playState = 0;
-            playSlerp = 0;
+            if(playCount>60*2) {
+                [self stateSet:0 texture:nil slerp:0];
+            }
             break;
 
         case 0:
@@ -660,7 +665,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                             // If the last video is the same video and it is stopped then simply restart it
                             playName = name;
                             if(TRUE) {
-                                playState = 1;
+                                playState = 2;
                                 NSString* url = [NSString stringWithFormat:@"http://%@/%@.mp4",serverName,playName];
                                 [videoPlayerHelper stop];
                                 [videoPlayerHelper unload];
@@ -676,7 +681,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                             NSLog(@"state 0->2: playing same video again");
                         } else {
                             // play a different video
-                            playState = 1;
+                            playState = 2;
                             playName = name;
                             NSString* url = [NSString stringWithFormat:@"http://%@/%@.mp4",serverName,playName];
                             [videoPlayerHelper stop];
@@ -692,16 +697,17 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                     playCount = 0;
                     playCode = imageTarget.getId();
                     NSString  *name = [NSString stringWithFormat:@"%s",imageTarget.getName()];
-                    textureHandlePreamble = [self renderGetTexture:name];
-                    textureHandleBumper = [self renderGetTextureBumper:name];
-                    textureHandle = textureHandlePreamble;
+                    preambleTextureHandle = [self renderGetTexture:name];
+                    bumperTextureHandle = [self renderGetTextureBumper:name];
+                    textureHandle = preambleTextureHandle;
                     NSLog(@"state 0: found target");
                 }
             }
             break;
             
         case 1:
-            
+            playState = 2;
+/*
             // present interstitial image for "a while"
             // this gives the video time to prebuffer
             // it may be that the video arrives prior to this reaching full screen
@@ -709,7 +715,7 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             // in either case we transition out of this mode after a moment, but continue to zoom in
             // continue zooming in on previously established texture
 
-            playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
+            playSlerp = playSlerp + 0.03f; if(playSlerp>1) playSlerp = 1;
 
             playCount++;
             if(playCount > FRAMES_DURING_ZOOM) {
@@ -721,32 +727,22 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             // touch during warm up to just stop
             if(touched) {
                 touched = 0;
-                playState = -1;
-                playCount = 0;
-                playCode = -1;
-                textureHandle = 0;
+                [self stateSet:-1 texture:nil slerp:0];
                 [videoPlayerHelper stop];
             }
 
             break;
-            
+*/
         case 2:
             
-            // play video if any frames (else stick with previous texture handle)
-            // continue zooming in
-            
-            playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
-
             // touch during play to exit
             if(touched) {
+                NSLog(@"state 2->3: touched during play - showing end bumper");
                 touched = 0;
-                playState = 3;
-                playCount = 0;
-                playCode = -1;
                 videoTextureHandle.textureID = 0;
-                textureHandle = textureHandleBumper;
                 [videoPlayerHelper setPlayImmediately:FALSE];
                 [videoPlayerHelper stop];
+                [self stateSet:3 texture:bumperTextureHandle slerp:1];
                 break;
             }
 
@@ -754,20 +750,18 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                 case PLAYING: {
                     GLuint t = [videoPlayerHelper updateVideoData];
                     if(t) {
+                        playSlerp = playSlerp + 0.05f; if(playSlerp>1) playSlerp = 1;
                         videoTextureHandle.textureID = t;
                         textureHandle = videoTextureHandle;
+                        // find the video aspect as soon was we have data
+                        videoAspect = (float)[videoPlayerHelper getVideoHeight] / (float)[videoPlayerHelper getVideoWidth];
                     }
-                    // find the video aspect as soon was we have data
-                    videoAspect = (float)[videoPlayerHelper getVideoHeight] / (float)[videoPlayerHelper getVideoWidth];
                     break;
                 }
                 case REACHED_END:
                     NSLog(@"state 2->3: Video hit end - showing end bumper");
                     touched = 0;
-                    playState = 3;
-                    playCount = 0;
-                    playCode = -1;
-                    textureHandle = textureHandleBumper;
+                    [self stateSet:3 texture:bumperTextureHandle slerp:1];
                     break;
 
                 case PAUSED:
@@ -781,9 +775,11 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
                     break;
 
                 case ERROR:
-                    videoTextureHandle.textureID = 0;
-                    playState = 999;
                     NSLog(@"Error: something went wrong %d",currentStatus);
+                    videoTextureHandle.textureID = 0;
+                    [videoPlayerHelper setPlayImmediately:FALSE];
+                    [videoPlayerHelper stop];
+                    [self stateSet:-1 texture:0 slerp:0];
                     break;
                     
                 default:
@@ -794,13 +790,12 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
         case 3:
 
             // show bumper for a while
-            textureHandle = textureHandleBumper;
+            textureHandle = bumperTextureHandle;
             playSlerp = 1;
             playCount++;
             if(playCount > 60*5) {
                 NSLog(@"state 3->4: Bumper done - going to fade");
-                playCount = 0;
-                playState = 4;
+                [self stateSet:4 texture:bumperTextureHandle slerp:1];
             }
             
             [self bumperTouch];
@@ -812,9 +807,11 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
             playSlerp = playSlerp - 0.1; if(playSlerp<0) playSlerp = 0;
             playCount++;
             if(playCount > 10) {
+                videoTextureHandle.textureID = 0;
+                [videoPlayerHelper setPlayImmediately:FALSE];
+                [videoPlayerHelper stop];
+                [self stateSet:-1 texture:nil slerp:0];
                 NSLog(@"state 4->end: Fade done");
-                playCount = 0;
-                playState = 999;
             }
             break;
             
@@ -891,30 +888,25 @@ GLKVector3 GLKVector3Slerp(GLKVector3 a, GLKVector3 b, float slerp) {
     gl44.m[12] = glxyz.v[0];
     gl44.m[13] = glxyz.v[1];
     gl44.m[14] = glxyz.v[2];
-
     
-    BOOL blend = textureHandle == introTextureHandle ? TRUE : FALSE;
+    BOOL blend = FALSE;
+    if(textureHandle == introTextureHandle || textureHandle == bumperTextureHandle) blend = TRUE;
+    
     GLuint name = textureHandle.textureID;
 
-    // projectionAspect is the aspect of the rectangle in the real world to fit the display
-    // videoAspect is the aspect of the video to fit the display
-    // - right now there is an issue with the bumper and startup using slerp - which allows videoaspect to pollute normal aspect ratio
-    
+    // This is sloppy but the idea is:
+    //  - aspect ratio for startup image and preamble and bumper want to be coincidentally similar to the videoAspect
+    //  - aspect ratio for the market image wants to be 1
+
     float aspect = targetAspect * (1.0f - playSlerp) + videoAspect * playSlerp;
 
-    //// test
-/*
- 
     if(textureHandle == videoTextureHandle) {
         aspect = videoAspect;
-    } else {
-        aspect = defaultAspect;
+    } else if(textureHandle == introTextureHandle) {
+    } else if(textureHandle == preambleTextureHandle) {
+        aspect = projectionAspect;
+    } else if(textureHandle == bumperTextureHandle) {
     }
-    if(textureHandle == textureHandlePreamble) {
-       // aspect = targetAspect * (1.0f - playSlerp) + videoAspect * playSlerp;
-    }
-*/
-
     
     SampleApplicationUtils::scalePoseMatrix(1.0f,aspect,1.0f,&gl44.m[0]);
     //SampleApplicationUtils::scalePoseMatrix(targetWidth, targetWidth * targetAspect,targetWidth,&gl44.m[0]);
