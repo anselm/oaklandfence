@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		43236C9D1CF0FDEB0025E879 /* intro.png in Resources */ = {isa = PBXBuildFile; fileRef = 43236C9C1CF0FDEB0025E879 /* intro.png */; };
 		43236C9F1CF10EDA0025E879 /* startscreen.png in Resources */ = {isa = PBXBuildFile; fileRef = 43236C9E1CF10EDA0025E879 /* startscreen.png */; };
+		439C76401D020E3500D67A48 /* OaklandFence-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 439C763F1D020E3500D67A48 /* OaklandFence-Info.plist */; };
 		43D0A3231C9F7ED0007E1F21 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 43D0A3011C9F7ECF007E1F21 /* AppDelegate.m */; };
 		43D0A3241C9F7ED0007E1F21 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 43D0A3021C9F7ECF007E1F21 /* en.lproj */; };
 		43D0A3251C9F7ED0007E1F21 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43D0A3031C9F7ECF007E1F21 /* Images.xcassets */; };
@@ -47,7 +48,7 @@
 /* Begin PBXFileReference section */
 		43236C9C1CF0FDEB0025E879 /* intro.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = intro.png; path = Resources/intro.png; sourceTree = "<group>"; };
 		43236C9E1CF10EDA0025E879 /* startscreen.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = startscreen.png; path = Resources/startscreen.png; sourceTree = "<group>"; };
-		4363D3A11C9F8518005D449E /* OaklandFence-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "OaklandFence-Info.plist"; sourceTree = "<group>"; };
+		439C763F1D020E3500D67A48 /* OaklandFence-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "OaklandFence-Info.plist"; sourceTree = "<group>"; };
 		43BB93441C9EF95100C1DE29 /* Vuforia */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Vuforia; sourceTree = "<group>"; };
 		43D0A3001C9F7ECF007E1F21 /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		43D0A3011C9F7ECF007E1F21 /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -165,8 +166,8 @@
 				43236C9E1CF10EDA0025E879 /* startscreen.png */,
 				43236C9C1CF0FDEB0025E879 /* intro.png */,
 				43F0BB7A1CD3E701004251E9 /* default.png */,
+				439C763F1D020E3500D67A48 /* OaklandFence-Info.plist */,
 				43FB7BD51C9F85D7007D9402 /* Main.storyboard */,
-				4363D3A11C9F8518005D449E /* OaklandFence-Info.plist */,
 				43D0A33E1C9F7F66007E1F21 /* shaders */,
 				43D0A33D1C9F7F29007E1F21 /* src */,
 				43D0A3021C9F7ECF007E1F21 /* en.lproj */,
@@ -273,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				43F0BB7B1CD3E701004251E9 /* default.png in Resources */,
+				439C76401D020E3500D67A48 /* OaklandFence-Info.plist in Resources */,
 				43236C9D1CF0FDEB0025E879 /* intro.png in Resources */,
 				43236C9F1CF10EDA0025E879 /* startscreen.png in Resources */,
 				43D0A32C1C9F7ED0007E1F21 /* Line.fragsh in Resources */,

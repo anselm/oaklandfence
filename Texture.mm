@@ -168,19 +168,33 @@
 - (BOOL)loadImage3:(NSString*)url local:(NSString*)filename
 {
     BOOL ret = NO;
+    
+    //NSURL *tmpDirURL = [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES];
+
 
     NSArray   *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString  *documentsDirectory = [paths objectAtIndex:0];
     NSFileManager* fm = [NSFileManager defaultManager];
+
     NSString  *fullPath = [NSString stringWithFormat:@"%@/%@", documentsDirectory,filename];
     NSDictionary* attrs1 = [fm attributesOfItemAtPath:fullPath error:nil];
 
+    // if file is not present then fetch over the net and save it
     if(attrs1 == nil) {
         NSURL* url1 = [NSURL URLWithString:url];
         NSData* urlData1 = [NSData dataWithContentsOfURL:url1];
         if (!urlData1) return NO;
         // [fm removeItemAtPath:fullPath error:nil];
         if(![fm createFileAtPath:fullPath contents:urlData1 attributes:nil]) return NO;
+
+        // Exclude file from being backed up in iCloud
+        NSURL *exclude = [NSURL fileURLWithPath:fullPath];
+        NSError *error = nil;
+        BOOL success = [exclude setResourceValue:[NSNumber numberWithBool:YES] forKey:NSURLIsExcludedFromBackupKey error: &error];
+        if(!success){
+            NSLog(@"Error excluding %@ from backup %@", fullPath, error);
+        }
+        
     }
     
     // Create a UIImage with the contents of the file
